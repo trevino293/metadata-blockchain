@@ -1,0 +1,92 @@
+version: '3.8'
+services:
+  hyperledger-peer:
+    image: hyperledger/fabric-peer:2.5
+    container_name: peer0.org1.example.com
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/fabric
+      - CORE_PEER_ID=peer0.org1.example.com
+      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_TLS_ENABLED=false
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+    command: |
+      bash -c '
+      mkdir -p /etc/hyperledger/fabric/msp/{admincerts,cacerts,keystore,signcerts}
+      
+      cat > /etc/hyperledger/fabric/core.yaml << "EOF"
+      peer:
+        id: peer0.org1.example.com
+        listenAddress: 0.0.0.0:7051
+        address: peer0.org1.example.com:7051
+        networkId: dev
+        gossip:
+          bootstrap: peer0.org1.example.com:7051
+          useLeaderElection: false
+          orgLeader: true
+          endpoint: peer0.org1.example.com:7051
+          externalEndpoint: peer0.org1.example.com:7051
+        tls:
+          enabled: false
+        fileSystemPath: /var/hyperledger/production
+        BCCSP:
+          Default: SW
+          SW:
+            Hash: SHA2
+            Security: 256
+            FileKeyStore:
+              KeyStore:
+        mspConfigPath: msp
+        localMspId: Org1MSP
+      vm:
+        endpoint: unix:///var/run/docker.sock
+      chaincode:
+        logging:
+          level: info
+      ledger:
+        state:
+          stateDatabase: goleveldb
+      EOF
+      
+      # Generate simple certs
+      openssl req -x509 -newkey rsa:2048 -nodes \
+        -keyout /etc/hyperledger/fabric/msp/keystore/priv_sk \
+        -out /etc/hyperledger/fabric/msp/signcerts/cert.pem \
+        -days 365 -subj "/CN=peer0"
+      
+      cp /etc/hyperledger/fabric/msp/signcerts/cert.pem /etc/hyperledger/fabric/msp/cacerts/ca-cert.pem
+      cp /etc/hyperledger/fabric/msp/signcerts/cert.pem /etc/hyperledger/fabric/msp/admincerts/admin-cert.pem
+      
+      echo "NodeOUs:" > /etc/hyperledger/fabric/msp/config.yaml
+      echo "  Enable: false" >> /etc/hyperledger/fabric/msp/config.yaml
+      
+      peer node start
+      '
+    volumes:
+      - peer0.org1.example.com:/var/hyperledger/production
+      - /var/run/docker.sock:/host/var/run/docker.sock
+    networks:
+      - blockchain-net
+    ports:
+      - "7051:7051"
+
+  cobol-blockchain:
+    build: .
+    container_name: cobol-metadata-node
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - blockchain-net
+    depends_on:
+      - hyperledger-peer
+    ports:
+      - "8080:8080"  # API port for the dashboard
+
+networks:
+  blockchain-net:
+    driver: bridge
+
+volumes:
+  peer0.org1.example.com:

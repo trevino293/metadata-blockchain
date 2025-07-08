@@ -1,0 +1,44 @@
+# Dockerfile for COBOL development environment
+FROM ubuntu:20.04
+
+# Prevent interactive prompts during apt-get install
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    gnucobol \
+    inotify-tools \
+    python3 \
+    python3-pip \
+    coreutils \
+    dos2unix \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN dos2unix requirements.txt && pip3 install -r requirements.txt
+
+# Copy all application files
+COPY cobol_programs/ ./cobol_programs/
+COPY adapters/ ./adapters/
+COPY scripts/ ./scripts/
+COPY start-services.sh .
+
+# Fix line endings for all scripts and make executable
+RUN find . -name "*.sh" -exec dos2unix {} \; && \
+    find . -name "*.cob" -exec dos2unix {} \; && \
+    chmod +x scripts/*.sh start-services.sh
+
+# Fix COBOL formatting before compilation
+RUN ./scripts/fix-cobol-format.sh
+
+# Create data directories
+RUN mkdir -p data logs pipes
+
+# Compile COBOL programs
+RUN ./scripts/compile-cobol.sh
+
+# Start services
+CMD ["./start-services.sh"]

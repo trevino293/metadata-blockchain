@@ -1,0 +1,19 @@
+{
+  "cobol": {
+    "data_directory": "/app/data",
+    "pipe_directory": "/tmp",
+    "encoding": "ASCII",
+    "record_format": "FIXED"
+  },
+  "blockchain": {
+    "channel": "metadata-channel",
+    "chaincode": "metadata-cc",
+    "batch_size": 10,
+    "timeout": 30
+  },
+  "monitoring": {
+    "file_patterns": ["*.dat", "*.idx"],
+    "poll_interval": 1,
+    "buffer_size": 1024
+  }
+}

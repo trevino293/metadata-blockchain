@@ -1,0 +1,2550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COBOL Data Administration Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #1a237e;
+            --secondary-color: #3949ab;
+            --accent-color: #5c6bc0;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --danger-color: #f44336;
+            --info-color: #2196f3;
+            --background: #f5f5f5;
+            --card-background: #ffffff;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --border-color: #e0e0e0;
+            --hover-background: #f8f9fa;
+            --shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-elevated: 0 8px 16px rgba(0,0,0,0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 280px;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            background: rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            padding: 24px 10px;
+        }
+
+        .sidebar-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed .sidebar-title {
+            opacity: 0;
+        }
+
+        .toggle-sidebar {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-sidebar:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .sidebar.collapsed .nav-item {
+            padding: 12px 0;
+            justify-content: center;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: white;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed .nav-icon {
+            margin-right: 0;
+        }
+
+        .nav-text {
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed .nav-text {
+            opacity: 0;
+            width: 0;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            background: var(--card-background);
+            padding: 16px 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        .page-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--hover-background);
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--danger-color);
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: var(--success-color);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            background: var(--background);
+        }
+
+        /* Card Component */
+        .card {
+            background: var(--card-background);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-elevated);
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Schema Explorer Styles */
+        .schema-explorer {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 24px;
+            height: calc(100vh - 200px);
+        }
+
+        .file-tree {
+            background: var(--card-background);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tree-header {
+            padding: 16px;
+            background: var(--hover-background);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .tree-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .tree-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            margin-bottom: 4px;
+        }
+
+        .tree-item:hover {
+            background: var(--hover-background);
+        }
+
+        .tree-item.selected {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .tree-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .schema-details {
+            background: var(--card-background);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .details-header {
+            padding: 20px;
+            background: var(--hover-background);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .details-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        /* Field Table */
+        .field-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .field-table th {
+            background: var(--hover-background);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        .field-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .field-table tr:hover td {
+            background: var(--hover-background);
+        }
+
+        .field-name {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-weight: 500;
+            color: var(--secondary-color);
+        }
+
+        .field-type {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: var(--hover-background);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .field-position {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        /* CRUD Operations Panel */
+        .crud-panel {
+            display: grid;
+            gap: 24px;
+        }
+
+        .operation-tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: var(--hover-background);
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(92, 107, 192, 0.1);
+        }
+
+        .form-control.error {
+            border-color: var(--danger-color);
+        }
+
+        .form-help {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .form-error {
+            font-size: 0.85em;
+            color: var(--danger-color);
+            margin-top: 4px;
+        }
+
+        select.form-control {
+            cursor: pointer;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-elevated);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--text-secondary);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--hover-background);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Data Grid */
+        .data-grid {
+            overflow: hidden;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .grid-header {
+            background: var(--hover-background);
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .grid-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            padding: 8px 16px 8px 40px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 0.9em;
+            width: 250px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            width: 300px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            opacity: 0.5;
+        }
+
+        .grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .grid-table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 14px;
+            text-align: left;
+            font-weight: 500;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        .grid-table td {
+            padding: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .grid-table tr:hover td {
+            background: var(--hover-background);
+        }
+
+        .grid-table tr:nth-child(even) td {
+            background: rgba(0,0,0,0.02);
+        }
+
+        .record-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .action-btn.edit {
+            background: var(--info-color);
+            color: white;
+        }
+
+        .action-btn.delete {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .action-btn.view {
+            background: var(--success-color);
+            color: white;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: var(--card-background);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--hover-background);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 24px;
+            max-height: calc(90vh - 140px);
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Record Viewer */
+        .record-viewer {
+            background: var(--hover-background);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+
+        .record-line {
+            display: flex;
+            margin-bottom: 4px;
+        }
+
+        .record-field-name {
+            color: var(--secondary-color);
+            font-weight: 600;
+            width: 150px;
+            flex-shrink: 0;
+        }
+
+        .record-field-value {
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toast {
+            background: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-elevated);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            animation: slideInRight 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+        }
+
+        .toast.success::before {
+            background: var(--success-color);
+        }
+
+        .toast.error::before {
+            background: var(--danger-color);
+        }
+
+        .toast.warning::before {
+            background: var(--warning-color);
+        }
+
+        .toast.info::before {
+            background: var(--info-color);
+        }
+
+        .toast-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 0.95em;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        .toast-close:hover {
+            opacity: 1;
+        }
+
+        /* Loading States */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            opacity: 0.3;
+        }
+
+        .empty-message {
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+
+        .empty-description {
+            font-size: 0.95em;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .schema-explorer {
+                grid-template-columns: 1fr;
+            }
+            
+            .file-tree {
+                height: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+            
+            .sidebar.mobile-open {
+                left: 0;
+            }
+            
+            .sidebar.collapsed {
+                width: 280px;
+            }
+            
+            .content-area {
+                padding: 16px;
+            }
+            
+            .top-actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .search-input {
+                width: 150px;
+            }
+            
+            .search-input:focus {
+                width: 200px;
+            }
+            
+            .btn-group {
+                flex-wrap: wrap;
+            }
+            
+            .modal-content {
+                margin: 20px;
+                max-height: calc(100vh - 40px);
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .sidebar,
+            .top-bar,
+            .btn,
+            .action-btn,
+            .search-box,
+            .modal,
+            .toast-container {
+                display: none !important;
+            }
+            
+            .main-content {
+                margin: 0;
+            }
+            
+            .content-area {
+                padding: 0;
+            }
+            
+            .card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                break-inside: avoid;
+            }
+        }
+
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-muted { color: var(--text-secondary); }
+        .text-danger { color: var(--danger-color); }
+        .text-success { color: var(--success-color); }
+        .mt-2 { margin-top: 8px; }
+        .mt-3 { margin-top: 16px; }
+        .mt-4 { margin-top: 24px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-3 { margin-bottom: 16px; }
+        .mb-4 { margin-bottom: 24px; }
+        .p-2 { padding: 8px; }
+        .p-3 { padding: 16px; }
+        .p-4 { padding: 24px; }
+        .d-none { display: none; }
+        .d-flex { display: flex; }
+        .align-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 16px; }
+        .w-100 { width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1 class="sidebar-title">COBOL Admin</h1>
+                <button class="toggle-sidebar" onclick="toggleSidebar()">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="nav-menu">
+                <a class="nav-item active" onclick="switchView('dashboard')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                
+                <a class="nav-item" onclick="switchView('schema')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                    </svg>
+                    <span class="nav-text">Schema Explorer</span>
+                </a>
+                
+                <a class="nav-item" onclick="switchView('crud')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    <span class="nav-text">Data Operations</span>
+                </a>
+                
+                <a class="nav-item" onclick="switchView('query')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="nav-text">Query Builder</span>
+                </a>
+                
+                <a class="nav-item" onclick="switchView('import')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <span class="nav-text">Import/Export</span>
+                </a>
+                
+                <a class="nav-item" onclick="switchView('logs')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span class="nav-text">Activity Logs</span>
+                </a>
+                
+                <a class="nav-item" onclick="switchView('settings')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span class="nav-text">Settings</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <h2 class="page-title" id="page-title">Dashboard</h2>
+                <div class="top-actions">
+                    <div class="connection-status">
+                        <span class="status-indicator" id="status-indicator"></span>
+                        <span id="connection-text">Disconnected</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="connectToServer()">
+                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Connect
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area" id="content-area">
+                <!-- Dashboard View -->
+                <div id="dashboard-view" class="view-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">System Overview</h3>
+                        </div>
+                        <div class="card-body">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                                <div style="text-align: center; padding: 20px; background: var(--hover-background); border-radius: 8px;">
+                                    <h4 style="color: var(--text-secondary); font-weight: normal; margin-bottom: 8px;">Total Files</h4>
+                                    <div style="font-size: 2.5em; font-weight: 600; color: var(--primary-color);" id="total-files">0</div>
+                                </div>
+                                <div style="text-align: center; padding: 20px; background: var(--hover-background); border-radius: 8px;">
+                                    <h4 style="color: var(--text-secondary); font-weight: normal; margin-bottom: 8px;">Total Records</h4>
+                                    <div style="font-size: 2.5em; font-weight: 600; color: var(--success-color);" id="total-records">0</div>
+                                </div>
+                                <div style="text-align: center; padding: 20px; background: var(--hover-background); border-radius: 8px;">
+                                    <h4 style="color: var(--text-secondary); font-weight: normal; margin-bottom: 8px;">Last Updated</h4>
+                                    <div style="font-size: 1.2em; font-weight: 600; color: var(--text-primary);" id="last-updated">Never</div>
+                                </div>
+                                <div style="text-align: center; padding: 20px; background: var(--hover-background); border-radius: 8px;">
+                                    <h4 style="color: var(--text-secondary); font-weight: normal; margin-bottom: 8px;">Active Operations</h4>
+                                    <div style="font-size: 2.5em; font-weight: 600; color: var(--warning-color);" id="active-operations">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Recent Activity</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-activity" class="empty-state">
+                                <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div class="empty-message">No recent activity</div>
+                                <div class="empty-description">Activity will appear here once you connect to the server</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schema Explorer View -->
+                <div id="schema-view" class="view-content" style="display: none;">
+                    <div class="schema-explorer">
+                        <div class="file-tree">
+                            <div class="tree-header">Available Files</div>
+                            <div class="tree-content" id="file-list">
+                                <div class="empty-state">
+                                    <div class="empty-message">No files detected</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="schema-details">
+                            <div class="details-header">
+                                <h3 id="selected-file-name">Select a file to view schema</h3>
+                            </div>
+                            <div class="details-content" id="schema-details">
+                                <div class="empty-state">
+                                    <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <div class="empty-message">No file selected</div>
+                                    <div class="empty-description">Select a file from the list to view its schema</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CRUD Operations View -->
+                <div id="crud-view" class="view-content" style="display: none;">
+                    <div class="crud-panel">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="operation-tabs">
+                                    <button class="tab-btn active" onclick="switchCrudTab('browse')">Browse Records</button>
+                                    <button class="tab-btn" onclick="switchCrudTab('create')">Create Record</button>
+                                    <button class="tab-btn" onclick="switchCrudTab('update')">Update Record</button>
+                                    <button class="tab-btn" onclick="switchCrudTab('delete')">Delete Record</button>
+                                </div>
+
+                                <!-- Browse Tab -->
+                                <div id="browse-tab" class="tab-content active">
+                                    <div class="form-group">
+                                        <label class="form-label">Select File</label>
+                                        <select class="form-control" id="browse-file-select" onchange="loadRecords()">
+                                            <option value="">-- Select a file --</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="data-grid" id="records-grid" style="display: none;">
+                                        <div class="grid-header">
+                                            <h4>Records</h4>
+                                            <div class="grid-actions">
+                                                <div class="search-box">
+                                                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                                    </svg>
+                                                    <input type="text" class="search-input" placeholder="Search records..." onkeyup="filterRecords(this.value)">
+                                                </div>
+                                                <button class="btn btn-outline" onclick="refreshRecords()">
+                                                    <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                                    </svg>
+                                                    Refresh
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div style="overflow-x: auto;">
+                                            <table class="grid-table" id="records-table">
+                                                <thead id="records-thead"></thead>
+                                                <tbody id="records-tbody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Create Tab -->
+                                <div id="create-tab" class="tab-content">
+                                    <div class="form-group">
+                                        <label class="form-label">Select File</label>
+                                        <select class="form-control" id="create-file-select" onchange="loadCreateForm()">
+                                            <option value="">-- Select a file --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div id="create-form-container"></div>
+                                </div>
+
+                                <!-- Update Tab -->
+                                <div id="update-tab" class="tab-content">
+                                    <div class="form-group">
+                                        <label class="form-label">Select File</label>
+                                        <select class="form-control" id="update-file-select">
+                                            <option value="">-- Select a file --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label">Record ID</label>
+                                        <input type="text" class="form-control" id="update-record-id" placeholder="Enter record ID to update">
+                                        <button class="btn btn-primary mt-2" onclick="loadUpdateForm()">Load Record</button>
+                                    </div>
+                                    
+                                    <div id="update-form-container"></div>
+                                </div>
+
+                                <!-- Delete Tab -->
+                                <div id="delete-tab" class="tab-content">
+                                    <div class="form-group">
+                                        <label class="form-label">Select File</label>
+                                        <select class="form-control" id="delete-file-select">
+                                            <option value="">-- Select a file --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label">Record ID</label>
+                                        <input type="text" class="form-control" id="delete-record-id" placeholder="Enter record ID to delete">
+                                    </div>
+                                    
+                                    <button class="btn btn-danger" onclick="deleteRecord()">
+                                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        Delete Record
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Query Builder View -->
+                <div id="query-view" class="view-content" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Query Builder</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Select File</label>
+                                <select class="form-control" id="query-file-select" onchange="loadQueryFields()">
+                                    <option value="">-- Select a file --</option>
+                                </select>
+                            </div>
+                            
+                            <div id="query-builder-container" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label">Select Fields</label>
+                                    <div id="query-fields-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Conditions</label>
+                                    <div id="query-conditions">
+                                        <div class="query-condition" style="display: flex; gap: 12px; margin-bottom: 12px;">
+                                            <select class="form-control" style="flex: 1;">
+                                                <option value="">-- Select field --</option>
+                                            </select>
+                                            <select class="form-control" style="width: 120px;">
+                                                <option value="=">=</option>
+                                                <option value="!=">!=</option>
+                                                <option value=">">></option>
+                                                <option value="<"><</option>
+                                                <option value=">=">>=</option>
+                                                <option value="<="><=</option>
+                                                <option value="LIKE">LIKE</option>
+                                            </select>
+                                            <input type="text" class="form-control" style="flex: 1;" placeholder="Value">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline" onclick="addQueryCondition()">
+                                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                        Add Condition
+                                    </button>
+                                </div>
+                                
+                                <div class="btn-group">
+                                    <button class="btn btn-primary" onclick="executeQuery()">
+                                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                        </svg>
+                                        Execute Query
+                                    </button>
+                                    <button class="btn btn-outline" onclick="clearQuery()">Clear</button>
+                                </div>
+                            </div>
+                            
+                            <div id="query-results" style="margin-top: 24px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Import/Export View -->
+                <div id="import-view" class="view-content" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Import Data</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Select File Type</label>
+                                <select class="form-control" id="import-file-type">
+                                    <option value="">-- Select target file --</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Import Format</label>
+                                <select class="form-control" id="import-format">
+                                    <option value="csv">CSV</option>
+                                    <option value="json">JSON</option>
+                                    <option value="fixed">Fixed Width</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Select File</label>
+                                <input type="file" class="form-control" id="import-file" accept=".csv,.json,.txt">
+                            </div>
+                            
+                            <button class="btn btn-primary" onclick="importData()">
+                                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                Import Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h3 class="card-title">Export Data</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Select File</label>
+                                <select class="form-control" id="export-file-select">
+                                    <option value="">-- Select file to export --</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Export Format</label>
+                                <select class="form-control" id="export-format">
+                                    <option value="csv">CSV</option>
+                                    <option value="json">JSON</option>
+                                    <option value="fixed">Fixed Width</option>
+                                    <option value="excel">Excel</option>
+                                </select>
+                            </div>
+                            
+                            <button class="btn btn-success" onclick="exportData()">
+                                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Export Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Logs View -->
+                <div id="logs-view" class="view-content" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Activity Logs</h3>
+                            <button class="btn btn-outline" onclick="refreshLogs()">
+                                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Refresh
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="data-grid">
+                                <table class="grid-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Operation</th>
+                                            <th>File</th>
+                                            <th>Record ID</th>
+                                            <th>User</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="logs-tbody">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">No logs available</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings View -->
+                <div id="settings-view" class="view-content" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Connection Settings</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">API Endpoint</label>
+                                <input type="text" class="form-control" id="api-endpoint" value="http://localhost:8080/api">
+                                <span class="form-help">The URL of your COBOL-Blockchain API server</span>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Auto-refresh Interval (seconds)</label>
+                                <input type="number" class="form-control" id="refresh-interval" value="10" min="5" max="300">
+                                <span class="form-help">How often to automatically refresh data (5-300 seconds)</span>
+                            </div>
+                            
+                            <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h3 class="card-title">Display Settings</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">Records per page</label>
+                                <select class="form-control" id="records-per-page">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50" selected>50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Date Format</label>
+                                <select class="form-control" id="date-format">
+                                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="record-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Record Details</h3>
+                <button class="modal-close" onclick="closeModal('record-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('record-modal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // Configuration
+        let apiEndpoint = localStorage.getItem('apiEndpoint') || 'http://localhost:8080/api';
+        let refreshInterval = parseInt(localStorage.getItem('refreshInterval')) || 10;
+        let isConnected = false;
+        let refreshTimer = null;
+        let currentView = 'dashboard';
+        let selectedFile = null;
+        let schemas = {};
+        let records = {};
+        let logs = [];
+
+        // COBOL File Schemas (based on provided files)
+        const cobolSchemas = {
+            'MASTER.DAT': {
+                name: 'Master File',
+                recordLength: 136,
+                fields: [
+                    { name: 'RECORD-ID', type: 'X(10)', position: '1-10', description: 'Unique record identifier' },
+                    { name: 'RECORD-DATA', type: 'X(100)', position: '11-110', description: 'Main data content' },
+                    { name: 'LAST-MODIFIED', type: 'X(26)', position: '111-136', description: 'Timestamp of last modification' }
+                ]
+            },
+            'CUSTOMER.DAT': {
+                name: 'Customer File',
+                recordLength: 200,
+                fields: [
+                    { name: 'CUST-ID', type: 'X(10)', position: '1-10', description: 'Customer ID' },
+                    { name: 'CUST-NAME', type: 'X(30)', position: '11-40', description: 'Customer name' },
+                    { name: 'CUST-ADDRESS', type: 'X(50)', position: '41-90', description: 'Customer address' },
+                    { name: 'CUST-PHONE', type: 'X(15)', position: '91-105', description: 'Phone number' },
+                    { name: 'CUST-EMAIL', type: 'X(40)', position: '106-145', description: 'Email address' },
+                    { name: 'CUST-STATUS', type: 'X(1)', position: '146-146', description: 'Status (A/I)' },
+                    { name: 'CUST-BALANCE', type: 'S9(7)V99', position: '147-155', description: 'Account balance' },
+                    { name: 'LAST-UPDATE', type: 'X(26)', position: '156-181', description: 'Last update timestamp' },
+                    { name: 'FILLER', type: 'X(19)', position: '182-200', description: 'Reserved' }
+                ]
+            },
+            'TRANSACTION.DAT': {
+                name: 'Transaction File',
+                recordLength: 150,
+                fields: [
+                    { name: 'TRANS-ID', type: 'X(15)', position: '1-15', description: 'Transaction ID' },
+                    { name: 'TRANS-DATE', type: 'X(10)', position: '16-25', description: 'Transaction date' },
+                    { name: 'TRANS-TIME', type: 'X(8)', position: '26-33', description: 'Transaction time' },
+                    { name: 'TRANS-TYPE', type: 'X(2)', position: '34-35', description: 'Type (CR/DB)' },
+                    { name: 'TRANS-AMOUNT', type: 'S9(9)V99', position: '36-46', description: 'Transaction amount' },
+                    { name: 'TRANS-DESC', type: 'X(50)', position: '47-96', description: 'Description' },
+                    { name: 'ACCOUNT-ID', type: 'X(10)', position: '97-106', description: 'Account ID' },
+                    { name: 'STATUS', type: 'X(2)', position: '107-108', description: 'Status code' },
+                    { name: 'FILLER', type: 'X(42)', position: '109-150', description: 'Reserved' }
+                ]
+            },
+            'JCLLOG': {
+                name: 'JCL Log File',
+                recordLength: 132,
+                fields: [
+                    { name: 'JCL-RECORD', type: 'X(132)', position: '1-132', description: 'JCL execution log entry' }
+                ]
+            }
+        };
+
+        // Initialize application
+        function init() {
+            loadSettings();
+            setupEventListeners();
+            updateConnectionStatus();
+            
+            // Try to auto-connect
+            if (apiEndpoint) {
+                connectToServer();
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Close modals on outside click
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModal(modal.id);
+                    }
+                });
+            });
+            
+            // Handle keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case 'r':
+                            e.preventDefault();
+                            refreshCurrentView();
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            if (currentView === 'settings') {
+                                saveSettings();
+                            }
+                            break;
+                    }
+                }
+            });
+        }
+
+        // Navigation functions
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        function switchView(view) {
+            currentView = view;
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.nav-item').classList.add('active');
+            
+            // Update page title
+            const titles = {
+                'dashboard': 'Dashboard',
+                'schema': 'Schema Explorer',
+                'crud': 'Data Operations',
+                'query': 'Query Builder',
+                'import': 'Import/Export',
+                'logs': 'Activity Logs',
+                'settings': 'Settings'
+            };
+            document.getElementById('page-title').textContent = titles[view] || 'Dashboard';
+            
+            // Hide all views
+            document.querySelectorAll('.view-content').forEach(v => {
+                v.style.display = 'none';
+            });
+            
+            // Show selected view
+            document.getElementById(`${view}-view`).style.display = 'block';
+            
+            // Load view-specific data
+            loadViewData(view);
+        }
+
+        function loadViewData(view) {
+            if (!isConnected) return;
+            
+            switch(view) {
+                case 'dashboard':
+                    loadDashboard();
+                    break;
+                case 'schema':
+                    loadSchemaExplorer();
+                    break;
+                case 'crud':
+                    loadCrudData();
+                    break;
+                case 'query':
+                    loadQueryBuilder();
+                    break;
+                case 'import':
+                    loadImportExport();
+                    break;
+                case 'logs':
+                    loadActivityLogs();
+                    break;
+            }
+        }
+
+        // Connection management
+        async function connectToServer() {
+            try {
+                showToast('info', 'Connecting to server...');
+                
+                // Test connection
+                const response = await fetch(`${apiEndpoint}/status`);
+                if (!response.ok) throw new Error('Connection failed');
+                
+                const data = await response.json();
+                isConnected = true;
+                updateConnectionStatus();
+                
+                showToast('success', 'Connected successfully!');
+                
+                // Start auto-refresh
+                startAutoRefresh();
+                
+                // Load initial data
+                loadViewData(currentView);
+                
+            } catch (error) {
+                isConnected = false;
+                updateConnectionStatus();
+                showToast('error', 'Failed to connect: ' + error.message);
+            }
+        }
+
+        function updateConnectionStatus() {
+            const indicator = document.getElementById('status-indicator');
+            const text = document.getElementById('connection-text');
+            
+            if (isConnected) {
+                indicator.classList.add('connected');
+                text.textContent = 'Connected';
+            } else {
+                indicator.classList.remove('connected');
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            refreshTimer = setInterval(() => {
+                if (isConnected) {
+                    refreshCurrentView();
+                }
+            }, refreshInterval * 1000);
+        }
+
+        function stopAutoRefresh() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
+            }
+        }
+
+        function refreshCurrentView() {
+            loadViewData(currentView);
+        }
+
+        // Dashboard functions
+        async function loadDashboard() {
+            try {
+                // Load statistics
+                const statsResponse = await fetch(`${apiEndpoint}/stats`);
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    document.getElementById('total-files').textContent = stats.filesMonitored || 0;
+                    document.getElementById('total-records').textContent = stats.totalTransactions || 0;
+                    document.getElementById('last-updated').textContent = formatTimestamp(new Date());
+                    document.getElementById('active-operations').textContent = '0'; // Would come from real-time data
+                }
+                
+                // Load recent activity
+                const transResponse = await fetch(`${apiEndpoint}/transactions`);
+                if (transResponse.ok) {
+                    const data = await transResponse.json();
+                    displayRecentActivity(data.transactions.slice(0, 10));
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        function displayRecentActivity(transactions) {
+            const container = document.getElementById('recent-activity');
+            
+            if (transactions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="empty-message">No recent activity</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = `
+                <table class="grid-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Operation</th>
+                            <th>File</th>
+                            <th>Record ID</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.map(t => `
+                            <tr>
+                                <td>${formatTimestamp(t.timestamp)}</td>
+                                <td><span class="operation ${t.operation.toLowerCase()}">${t.operation}</span></td>
+                                <td>${t.file}</td>
+                                <td><span class="record-id">${t.recordId}</span></td>
+                                <td>${getStatusBadge(t.status)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Schema Explorer functions
+        async function loadSchemaExplorer() {
+            // For now, use local schemas
+            schemas = cobolSchemas;
+            
+            // Also try to fetch from API
+            try {
+                const response = await fetch(`${apiEndpoint}/schema`);
+                if (response.ok) {
+                    const apiSchemas = await response.json();
+                    // Merge with local schemas
+                    Object.keys(apiSchemas.files).forEach(file => {
+                        if (!schemas[file]) {
+                            schemas[file] = {
+                                name: file,
+                                recordLength: apiSchemas.files[file].recordLength,
+                                fields: [] // Would need field details from API
+                            };
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching schemas:', error);
+            }
+            
+            displayFileList();
+        }
+
+        function displayFileList() {
+            const container = document.getElementById('file-list');
+            const files = Object.keys(schemas);
+            
+            if (files.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-message">No files detected</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = files.map(file => `
+                <div class="tree-item ${selectedFile === file ? 'selected' : ''}" onclick="selectFile('${file}')">
+                    <svg class="tree-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span>${file}</span>
+                </div>
+            `).join('');
+        }
+
+        function selectFile(file) {
+            selectedFile = file;
+            displayFileList();
+            displaySchemaDetails(file);
+        }
+
+        function displaySchemaDetails(file) {
+            const schema = schemas[file];
+            if (!schema) return;
+            
+            document.getElementById('selected-file-name').textContent = schema.name || file;
+            
+            const container = document.getElementById('schema-details');
+            container.innerHTML = `
+                <div class="mb-4">
+                    <p><strong>File:</strong> ${file}</p>
+                    <p><strong>Record Length:</strong> ${schema.recordLength} bytes</p>
+                    <p><strong>Fields:</strong> ${schema.fields.length}</p>
+                </div>
+                
+                <h4 class="mb-3">Field Definitions</h4>
+                <table class="field-table">
+                    <thead>
+                        <tr>
+                            <th>Field Name</th>
+                            <th>Type</th>
+                            <th>Position</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${schema.fields.map(field => `
+                            <tr>
+                                <td class="field-name">${field.name}</td>
+                                <td><span class="field-type">${field.type}</span></td>
+                                <td class="field-position">${field.position}</td>
+                                <td>${field.description}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                <h4 class="mt-4 mb-3">Sample Record Layout</h4>
+                <div class="record-viewer">
+                    ${generateSampleRecord(schema)}
+                </div>
+            `;
+        }
+
+        function generateSampleRecord(schema) {
+            let record = '';
+            let position = 1;
+            
+            schema.fields.forEach(field => {
+                const [start, end] = field.position.split('-').map(Number);
+                const length = end - start + 1;
+                
+                // Generate sample data based on type
+                let value = '';
+                if (field.type.includes('9')) {
+                    value = '0'.repeat(length);
+                } else {
+                    value = 'X'.repeat(Math.min(length, 10)) + ' '.repeat(Math.max(0, length - 10));
+                }
+                
+                record += `<div class="record-line">
+                    <span class="record-field-name">${field.name}:</span>
+                    <span class="record-field-value">${value}</span>
+                </div>`;
+            });
+            
+            return record;
+        }
+
+        // CRUD Operations functions
+        function loadCrudData() {
+            // Populate file selects
+            const files = Object.keys(schemas);
+            const selects = ['browse-file-select', 'create-file-select', 'update-file-select', 'delete-file-select'];
+            
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                select.innerHTML = '<option value="">-- Select a file --</option>' +
+                    files.map(file => `<option value="${file}">${file}</option>`).join('');
+            });
+        }
+
+        function switchCrudTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tab}-tab`).classList.add('active');
+        }
+
+        async function loadRecords() {
+            const file = document.getElementById('browse-file-select').value;
+            if (!file) return;
+            
+            document.getElementById('records-grid').style.display = 'block';
+            
+            // In a real implementation, this would fetch from the API
+            // For demo, we'll generate sample data
+            const schema = schemas[file];
+            if (!schema) return;
+            
+            // Generate table headers
+            const thead = document.getElementById('records-thead');
+            thead.innerHTML = `
+                <tr>
+                    ${schema.fields.map(field => `<th>${field.name}</th>`).join('')}
+                    <th>Actions</th>
+                </tr>
+            `;
+            
+            // Generate sample records
+            const tbody = document.getElementById('records-tbody');
+            const sampleRecords = generateSampleRecords(file, 10);
+            
+            tbody.innerHTML = sampleRecords.map(record => `
+                <tr>
+                    ${schema.fields.map(field => `<td>${record[field.name]}</td>`).join('')}
+                    <td>
+                        <div class="record-actions">
+                            <button class="action-btn view" onclick="viewRecord('${file}', '${record['RECORD-ID'] || record['CUST-ID'] || record['TRANS-ID']}')">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                            <button class="action-btn edit" onclick="editRecord('${file}', '${record['RECORD-ID'] || record['CUST-ID'] || record['TRANS-ID']}')">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button class="action-btn delete" onclick="confirmDelete('${file}', '${record['RECORD-ID'] || record['CUST-ID'] || record['TRANS-ID']}')">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function generateSampleRecords(file, count) {
+            const schema = schemas[file];
+            const records = [];
+            
+            for (let i = 1; i <= count; i++) {
+                const record = {};
+                
+                schema.fields.forEach(field => {
+                    const [start, end] = field.position.split('-').map(Number);
+                    const length = end - start + 1;
+                    
+                    if (field.name.includes('ID')) {
+                        record[field.name] = `TEST${i.toString().padStart(6, '0')}`;
+                    } else if (field.type.includes('9')) {
+                        record[field.name] = Math.floor(Math.random() * 1000).toString();
+                    } else if (field.name.includes('DATE')) {
+                        record[field.name] = new Date().toISOString().split('T')[0];
+                    } else if (field.name.includes('TIME')) {
+                        record[field.name] = new Date().toTimeString().split(' ')[0];
+                    } else if (field.name.includes('STATUS')) {
+                        record[field.name] = Math.random() > 0.5 ? 'A' : 'I';
+                    } else if (field.name === 'FILLER') {
+                        record[field.name] = '';
+                    } else {
+                        record[field.name] = `Sample ${field.name} ${i}`;
+                    }
+                });
+                
+                records.push(record);
+            }
+            
+            return records;
+        }
+
+        function filterRecords(searchTerm) {
+            const tbody = document.getElementById('records-tbody');
+            const rows = tbody.getElementsByTagName('tr');
+            
+            Array.from(rows).forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm.toLowerCase()) ? '' : 'none';
+            });
+        }
+
+        function refreshRecords() {
+            loadRecords();
+            showToast('success', 'Records refreshed');
+        }
+
+        function viewRecord(file, recordId) {
+            const schema = schemas[file];
+            const record = generateSampleRecords(file, 1)[0]; // In real app, fetch actual record
+            
+            document.getElementById('modal-title').textContent = `Record: ${recordId}`;
+            document.getElementById('modal-body').innerHTML = `
+                <div class="record-viewer">
+                    ${schema.fields.map(field => `
+                        <div class="record-line">
+                            <span class="record-field-name">${field.name}:</span>
+                            <span class="record-field-value">${record[field.name]}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            openModal('record-modal');
+        }
+
+        function editRecord(file, recordId) {
+            // Switch to update tab and load record
+            switchCrudTab('update');
+            document.getElementById('update-file-select').value = file;
+            document.getElementById('update-record-id').value = recordId;
+            loadUpdateForm();
+        }
+
+        function confirmDelete(file, recordId) {
+            if (confirm(`Are you sure you want to delete record ${recordId} from ${file}?`)) {
+                deleteRecordById(file, recordId);
+            }
+        }
+
+        async function deleteRecordById(file, recordId) {
+            // In real implementation, would call API
+            showToast('success', `Record ${recordId} deleted successfully`);
+            refreshRecords();
+        }
+
+        function loadCreateForm() {
+            const file = document.getElementById('create-file-select').value;
+            if (!file) return;
+            
+            const schema = schemas[file];
+            const container = document.getElementById('create-form-container');
+            
+            container.innerHTML = `
+                <h4 class="mb-3">New ${schema.name} Record</h4>
+                ${schema.fields.filter(f => f.name !== 'FILLER').map(field => `
+                    <div class="form-group">
+                        <label class="form-label">${field.name}</label>
+                        <input type="text" class="form-control" id="create-${field.name}" 
+                               placeholder="${field.description}">
+                        <span class="form-help">Type: ${field.type}, Position: ${field.position}</span>
+                    </div>
+                `).join('')}
+                <button class="btn btn-success" onclick="createRecord()">Create Record</button>
+            `;
+        }
+
+        function loadUpdateForm() {
+            const file = document.getElementById('update-file-select').value;
+            const recordId = document.getElementById('update-record-id').value;
+            
+            if (!file || !recordId) return;
+            
+            const schema = schemas[file];
+            const record = generateSampleRecords(file, 1)[0]; // In real app, fetch actual record
+            const container = document.getElementById('update-form-container');
+            
+            container.innerHTML = `
+                <h4 class="mb-3">Update ${schema.name} Record</h4>
+                ${schema.fields.filter(f => f.name !== 'FILLER').map(field => `
+                    <div class="form-group">
+                        <label class="form-label">${field.name}</label>
+                        <input type="text" class="form-control" id="update-${field.name}" 
+                               value="${record[field.name]}"
+                               placeholder="${field.description}">
+                        <span class="form-help">Type: ${field.type}, Position: ${field.position}</span>
+                    </div>
+                `).join('')}
+                <button class="btn btn-primary" onclick="updateRecord()">Update Record</button>
+            `;
+        }
+
+        async function createRecord() {
+            // Gather form data and submit
+            showToast('success', 'Record created successfully');
+            document.getElementById('create-form-container').innerHTML = '';
+            document.getElementById('create-file-select').value = '';
+        }
+
+        async function updateRecord() {
+            // Gather form data and submit
+            showToast('success', 'Record updated successfully');
+            document.getElementById('update-form-container').innerHTML = '';
+            document.getElementById('update-file-select').value = '';
+            document.getElementById('update-record-id').value = '';
+        }
+
+        async function deleteRecord() {
+            const file = document.getElementById('delete-file-select').value;
+            const recordId = document.getElementById('delete-record-id').value;
+            
+            if (!file || !recordId) {
+                showToast('error', 'Please select a file and enter a record ID');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to delete record ${recordId} from ${file}?`)) {
+                await deleteRecordById(file, recordId);
+                document.getElementById('delete-file-select').value = '';
+                document.getElementById('delete-record-id').value = '';
+            }
+        }
+
+        // Query Builder functions
+        function loadQueryBuilder() {
+            const files = Object.keys(schemas);
+            const select = document.getElementById('query-file-select');
+            select.innerHTML = '<option value="">-- Select a file --</option>' +
+                files.map(file => `<option value="${file}">${file}</option>`).join('');
+        }
+
+        function loadQueryFields() {
+            const file = document.getElementById('query-file-select').value;
+            if (!file) return;
+            
+            const schema = schemas[file];
+            document.getElementById('query-builder-container').style.display = 'block';
+            
+            // Display field checkboxes
+            const container = document.getElementById('query-fields-list');
+            container.innerHTML = schema.fields.filter(f => f.name !== 'FILLER').map(field => `
+                <label style="display: block; margin-bottom: 8px;">
+                    <input type="checkbox" value="${field.name}" checked style="margin-right: 8px;">
+                    ${field.name} (${field.type})
+                </label>
+            `).join('');
+            
+            // Update condition field selects
+            updateConditionFields(schema);
+        }
+
+        function updateConditionFields(schema) {
+            const selects = document.querySelectorAll('.query-condition select:first-child');
+            const options = '<option value="">-- Select field --</option>' +
+                schema.fields.filter(f => f.name !== 'FILLER').map(field => 
+                    `<option value="${field.name}">${field.name}</option>`
+                ).join('');
+            
+            selects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = options;
+                select.value = currentValue;
+            });
+        }
+
+        function addQueryCondition() {
+            const container = document.getElementById('query-conditions');
+            const newCondition = document.createElement('div');
+            newCondition.className = 'query-condition';
+            newCondition.style = 'display: flex; gap: 12px; margin-bottom: 12px;';
+            newCondition.innerHTML = `
+                <select class="form-control" style="flex: 1;">
+                    <option value="">-- Select field --</option>
+                </select>
+                <select class="form-control" style="width: 120px;">
+                    <option value="=">=</option>
+                    <option value="!=">!=</option>
+                    <option value=">">></option>
+                    <option value="<"><</option>
+                    <option value=">=">>=</option>
+                    <option value="<="><=</option>
+                    <option value="LIKE">LIKE</option>
+                </select>
+                <input type="text" class="form-control" style="flex: 1;" placeholder="Value">
+                <button class="btn btn-danger" onclick="this.parentElement.remove()">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            container.appendChild(newCondition);
+            
+            // Update field options
+            const file = document.getElementById('query-file-select').value;
+            if (file && schemas[file]) {
+                updateConditionFields(schemas[file]);
+            }
+        }
+
+        async function executeQuery() {
+            const file = document.getElementById('query-file-select').value;
+            if (!file) {
+                showToast('error', 'Please select a file');
+                return;
+            }
+            
+            // Get selected fields
+            const selectedFields = Array.from(document.querySelectorAll('#query-fields-list input:checked'))
+                .map(cb => cb.value);
+            
+            // Get conditions
+            const conditions = Array.from(document.querySelectorAll('.query-condition')).map(cond => {
+                const field = cond.querySelector('select:first-child').value;
+                const operator = cond.querySelectorAll('select')[1].value;
+                const value = cond.querySelector('input').value;
+                return { field, operator, value };
+            }).filter(c => c.field && c.value);
+            
+            // In real implementation, would execute query on server
+            // For demo, generate sample results
+            const results = generateSampleRecords(file, 5);
+            
+            const resultsContainer = document.getElementById('query-results');
+            resultsContainer.innerHTML = `
+                <h4>Query Results</h4>
+                <div class="data-grid">
+                    <table class="grid-table">
+                        <thead>
+                            <tr>
+                                ${selectedFields.map(field => `<th>${field}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${results.map(record => `
+                                <tr>
+                                    ${selectedFields.map(field => `<td>${record[field]}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-outline" onclick="exportQueryResults()">Export Results</button>
+                </div>
+            `;
+            
+            showToast('success', `Query executed: ${results.length} records found`);
+        }
+
+        function clearQuery() {
+            document.getElementById('query-file-select').value = '';
+            document.getElementById('query-builder-container').style.display = 'none';
+            document.getElementById('query-results').innerHTML = '';
+        }
+
+        // Import/Export functions
+        function loadImportExport() {
+            const files = Object.keys(schemas);
+            
+            document.getElementById('import-file-type').innerHTML = 
+                '<option value="">-- Select target file --</option>' +
+                files.map(file => `<option value="${file}">${file}</option>`).join('');
+            
+            document.getElementById('export-file-select').innerHTML = 
+                '<option value="">-- Select file to export --</option>' +
+                files.map(file => `<option value="${file}">${file}</option>`).join('');
+        }
+
+        async function importData() {
+            const fileType = document.getElementById('import-file-type').value;
+            const format = document.getElementById('import-format').value;
+            const fileInput = document.getElementById('import-file');
+            
+            if (!fileType || !fileInput.files.length) {
+                showToast('error', 'Please select a file type and file to import');
+                return;
+            }
+            
+            // In real implementation, would process and upload file
+            showToast('success', 'Import process started');
+            
+            // Reset form
+            document.getElementById('import-file-type').value = '';
+            fileInput.value = '';
+        }
+
+        async function exportData() {
+            const file = document.getElementById('export-file-select').value;
+            const format = document.getElementById('export-format').value;
+            
+            if (!file) {
+                showToast('error', 'Please select a file to export');
+                return;
+            }
+            
+            // In real implementation, would generate and download file
+            const filename = `${file.replace('.DAT', '')}_export_${new Date().getTime()}.${format}`;
+            
+            // Create sample data
+            const data = generateSampleRecords(file, 10);
+            let content = '';
+            
+            switch(format) {
+                case 'csv':
+                    const headers = Object.keys(data[0]).join(',');
+                    const rows = data.map(record => Object.values(record).join(','));
+                    content = headers + '\n' + rows.join('\n');
+                    break;
+                case 'json':
+                    content = JSON.stringify(data, null, 2);
+                    break;
+                case 'fixed':
+                    // Generate fixed-width format
+                    content = data.map(record => {
+                        return Object.values(record).map((val, i) => {
+                            const field = schemas[file].fields[i];
+                            const [start, end] = field.position.split('-').map(Number);
+                            const length = end - start + 1;
+                            return val.toString().padEnd(length, ' ').substring(0, length);
+                        }).join('');
+                    }).join('\n');
+                    break;
+            }
+            
+            // Download file
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('success', `Exported ${data.length} records to ${filename}`);
+        }
+
+        // Activity Logs functions
+        async function loadActivityLogs() {
+            refreshLogs();
+        }
+
+        async function refreshLogs() {
+            // In real implementation, would fetch from API
+            const sampleLogs = [
+                {
+                    timestamp: new Date(),
+                    operation: 'CREATE',
+                    file: 'MASTER.DAT',
+                    recordId: 'TEST001',
+                    user: 'admin',
+                    status: 'SUCCESS'
+                },
+                {
+                    timestamp: new Date(Date.now() - 300000),
+                    operation: 'UPDATE',
+                    file: 'CUSTOMER.DAT',
+                    recordId: 'CUST001',
+                    user: 'admin',
+                    status: 'SUCCESS'
+                },
+                {
+                    timestamp: new Date(Date.now() - 600000),
+                    operation: 'DELETE',
+                    file: 'TRANSACTION.DAT',
+                    recordId: 'TRX001',
+                    user: 'admin',
+                    status: 'FAILED'
+                }
+            ];
+            
+            const tbody = document.getElementById('logs-tbody');
+            tbody.innerHTML = sampleLogs.map(log => `
+                <tr>
+                    <td>${formatTimestamp(log.timestamp)}</td>
+                    <td><span class="operation ${log.operation.toLowerCase()}">${log.operation}</span></td>
+                    <td>${log.file}</td>
+                    <td><span class="record-id">${log.recordId}</span></td>
+                    <td>${log.user}</td>
+                    <td>${getStatusBadge(log.status)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Settings functions
+        function loadSettings() {
+            document.getElementById('api-endpoint').value = apiEndpoint;
+            document.getElementById('refresh-interval').value = refreshInterval;
+        }
+
+        function saveSettings() {
+            apiEndpoint = document.getElementById('api-endpoint').value;
+            refreshInterval = parseInt(document.getElementById('refresh-interval').value);
+            
+            localStorage.setItem('apiEndpoint', apiEndpoint);
+            localStorage.setItem('refreshInterval', refreshInterval);
+            
+            showToast('success', 'Settings saved successfully');
+            
+            // Restart auto-refresh with new interval
+            if (isConnected) {
+                startAutoRefresh();
+            }
+        }
+
+        // Utility functions
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function getStatusBadge(status) {
+            const statusMap = {
+                '00': { class: 'success', text: 'Success' },
+                'SUCCESS': { class: 'success', text: 'Success' },
+                'FAILED': { class: 'danger', text: 'Failed' },
+                'PENDING': { class: 'warning', text: 'Pending' }
+            };
+            
+            const config = statusMap[status] || { class: 'secondary', text: status };
+            return `<span class="badge badge-${config.class}">${config.text}</span>`;
+        }
+
+        function showToast(type, message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>',
+                error: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>',
+                warning: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>',
+                info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+            };
+            
+            toast.innerHTML = `
+                <svg class="toast-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    ${icons[type]}
+                </svg>
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+        
+        // Clean up on unload
+        window.addEventListener('unload', () => {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html>
