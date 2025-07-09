@@ -1,9 +1,18 @@
-﻿# GCP Blockchain Connection Info
-Project ID: metadata-blockchain
-VM IP: 34.133.81.110
-API Endpoint: http://
-Zone: us-central1-a
+﻿# Simple GCP Blockchain Deployment
+VM IP: 34.173.126.154
+API Status: http://34.173.126.154:8080/status
+API Health: http://34.173.126.154:8080/health
+API Blocks: http://34.173.126.154:8080/blocks
 
-# Quick Commands:
-# Test: .\test-simple.ps1 metadata-blockchain
-# Cleanup: .\cleanup-simple.ps1 metadata-blockchain
+# Test commands:
+Invoke-RestMethod -Uri "http://34.173.126.154:8080/status"
+gcloud pubsub topics publish metadata-events --message='{"test":"message"}' --project=metadata-blockchain
+
+# SSH to VM:
+gcloud compute ssh blockchain-node --zone=us-central1-a --project=metadata-blockchain
+
+# Clean up:
+gcloud compute instances delete blockchain-node --zone=us-central1-a --project=metadata-blockchain --quiet
+gcloud compute firewall-rules delete allow-blockchain --project=metadata-blockchain --quiet
+gcloud pubsub subscriptions delete blockchain-sub --project=metadata-blockchain --quiet
+gcloud pubsub topics delete metadata-events --project=metadata-blockchain --quiet
