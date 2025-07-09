@@ -15,5 +15,10 @@
     "file_patterns": ["*.dat", "*.idx"],
     "poll_interval": 1,
     "buffer_size": 1024
+  },
+    "gcp": {
+    "project_id": "metadata-blockchain",
+    "pubsub_topic": "metadata-events",
+    "credentials_path": "/app/config/gcp-credentials.json"
   }
 }

@@ -1,4 +1,4 @@
-﻿# test-simple.ps1 - Test the simple GCP blockchain (Windows PowerShell)
+﻿## test-simple.ps1 - Test the simple GCP blockchain (Windows PowerShell)
 
 param(
     [Parameter(Mandatory=$true)]
@@ -211,7 +211,7 @@ $htmlContent = @"
         }
         
         function publishTest() {
-            alert('Use gcloud command to publish:\ngcloud pubsub topics publish metadata-events --message=\'{"test": "browser"}\' --project=$ProjectId');
+            alert('Use gcloud command to publish:\\ngcloud pubsub topics publish metadata-events --message=\\'{"test": "browser"}\\' --project=$ProjectId');
         }
         
         // Auto-load status on page load
@@ -223,4 +223,4 @@ $htmlContent = @"
 
 $htmlContent | Out-File -FilePath "blockchain-monitor.html" -Encoding UTF8
 Write-Host "📄 HTML monitor saved to: blockchain-monitor.html" -ForegroundColor Yellow
-Write-Host "   Open this file in your browser to monitor the blockchain" -ForegroundColor Grayt=$PROJECT_ID"
+Write-Host "   Open this file in your browser to monitor the blockchain" -ForegroundColor Gray

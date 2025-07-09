@@ -249,4 +249,4 @@ Zone: $Zone
 # Cleanup: .\cleanup-simple.ps1 $ProjectId
 "@ | Out-File -FilePath "connection-info.txt" -Encoding UTF8
 
-Write-Host "Connection info saved to: connection-info.txt" -ForegroundColor Yellow to: connection-info.txt" -ForegroundColor Yellown-info.txt" -ForegroundColor Yellow
+Write-Host "Connection info saved to: connection-info.txt" -ForegroundColor Yellow
