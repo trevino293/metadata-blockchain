@@ -1,4 +1,4 @@
-﻿# debug-gcp-issues.ps1 - Debug and fix GCP Pub/Sub and API issues
+﻿# debug-gcp-issues-fixed.ps1 - Fixed version with proper URL formatting
 
 param(
     [Parameter(Mandatory=$true)]
@@ -6,7 +6,7 @@ param(
     [string]$Zone = "us-central1-a"
 )
 
-Write-Host "🔧 Debugging GCP Blockchain Issues" -ForegroundColor Yellow
+Write-Host "🔧 Debugging GCP Blockchain Issues (FIXED)" -ForegroundColor Yellow
 Write-Host "Project: $ProjectId" -ForegroundColor Cyan
 Write-Host ""
 
@@ -23,14 +23,32 @@ try {
         --format="value(networkInterfaces[0].accessConfigs[0].natIP)" `
         --project=$ProjectId
     
+    # Trim whitespace from IP
+    $vmIp = $vmIp.Trim()
+    
     Write-Host "   VM Status: $vmStatus" -ForegroundColor Green
     Write-Host "   VM IP: $vmIp" -ForegroundColor Green
+    
+    # Validate IP format
+    if ($vmIp -match '^\d+\.\d+\.\d+\.\d+$') {
+        Write-Host "   ✅ Valid IP format" -ForegroundColor Green
+    } else {
+        Write-Host "   ❌ Invalid IP format: '$vmIp'" -ForegroundColor Red
+        exit 1
+    }
     
     if ($vmStatus -ne "RUNNING") {
         Write-Host "❌ VM is not running! Starting it..." -ForegroundColor Red
         gcloud compute instances start blockchain-node --zone=$Zone --project=$ProjectId
         Write-Host "⏳ Waiting for VM to start..." -ForegroundColor Yellow
         Start-Sleep -Seconds 30
+        
+        # Get IP again after starting
+        $vmIp = gcloud compute instances describe blockchain-node `
+            --zone=$Zone `
+            --format="value(networkInterfaces[0].accessConfigs[0].natIP)" `
+            --project=$ProjectId
+        $vmIp = $vmIp.Trim()
     }
 } catch {
     Write-Host "❌ Could not get VM status: $($_.Exception.Message)" -ForegroundColor Red
@@ -71,31 +89,70 @@ try {
 
 Write-Host ""
 
-# 3. Check VM logs to diagnose issues
-Write-Host "3. Checking VM service logs..." -ForegroundColor Yellow
+# 3. Test API with proper URL formatting
+Write-Host "3. Testing API..." -ForegroundColor Yellow
+
+# Build URLs properly
+$apiBaseUrl = "http://$vmIp" + ":8080"
+$statusUrl = "$apiBaseUrl/status"
+$healthUrl = "$apiBaseUrl/health"
+
+Write-Host "   API Base URL: $apiBaseUrl" -ForegroundColor Cyan
+Write-Host "   Status URL: $statusUrl" -ForegroundColor Cyan
+Write-Host "   Health URL: $healthUrl" -ForegroundColor Cyan
+
 try {
-    Write-Host "   Fetching recent blockchain service logs..." -ForegroundColor Gray
+    Write-Host "   Testing health endpoint..." -ForegroundColor Gray
+    $healthResponse = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 15
+    Write-Host "   ✅ Health check passed!" -ForegroundColor Green
+    Write-Host "   Response: $($healthResponse | ConvertTo-Json -Compress)" -ForegroundColor Cyan
     
-    $vmLogs = gcloud compute ssh blockchain-node `
-        --zone=$Zone `
-        --command='sudo journalctl -u blockchain --no-pager -n 20' `
-        --project=$ProjectId 2>$null
-    
-    if ($vmLogs) {
-        Write-Host "   Recent logs:" -ForegroundColor Cyan
-        $vmLogs | ForEach-Object { Write-Host "     $_" -ForegroundColor Gray }
-    } else {
-        Write-Host "   ⚠️ Could not fetch logs or service not running" -ForegroundColor Yellow
-    }
 } catch {
-    Write-Host "   ❌ Could not connect to VM for logs: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "   ❌ Health check failed: $($_.Exception.Message)" -ForegroundColor Yellow
+    
+    try {
+        Write-Host "   Trying status endpoint..." -ForegroundColor Gray
+        $statusResponse = Invoke-RestMethod -Uri $statusUrl -TimeoutSec 15
+        Write-Host "   ✅ Status endpoint responding!" -ForegroundColor Green
+        Write-Host "   Status: $($statusResponse.status)" -ForegroundColor Cyan
+        Write-Host "   Blocks: $($statusResponse.blocks)" -ForegroundColor Cyan
+        Write-Host "   Pending: $($statusResponse.pending_transactions)" -ForegroundColor Cyan
+        
+    } catch {
+        Write-Host "   ❌ API not responding: $($_.Exception.Message)" -ForegroundColor Red
+        
+        # Check if it's a connectivity issue
+        Write-Host "   Testing basic connectivity..." -ForegroundColor Gray
+        try {
+            $ping = Test-NetConnection -ComputerName $vmIp -Port 8080 -WarningAction SilentlyContinue
+            if ($ping.TcpTestSucceeded) {
+                Write-Host "   ✅ Port 8080 is reachable" -ForegroundColor Green
+                Write-Host "   ❓ Service may be starting up or misconfigured" -ForegroundColor Yellow
+            } else {
+                Write-Host "   ❌ Port 8080 is not reachable" -ForegroundColor Red
+                Write-Host "   🔍 Checking firewall rules..." -ForegroundColor Yellow
+                
+                $firewallRule = gcloud compute firewall-rules describe allow-blockchain --project=$ProjectId 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "   ✅ Firewall rule exists" -ForegroundColor Green
+                } else {
+                    Write-Host "   ❌ Firewall rule missing!" -ForegroundColor Red
+                    Write-Host "   Creating firewall rule..." -ForegroundColor Yellow
+                    gcloud compute firewall-rules create allow-blockchain --allow=tcp:8080 --source-ranges=0.0.0.0/0 --target-tags=blockchain --project=$ProjectId
+                }
+            }
+        } catch {
+            Write-Host "   ❌ Network test failed: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
 }
 
 Write-Host ""
 
-# 4. Check if service is actually running
-Write-Host "4. Checking if blockchain service is running..." -ForegroundColor Yellow
+# 4. Check VM service logs
+Write-Host "4. Checking VM service status..." -ForegroundColor Yellow
 try {
+    Write-Host "   Checking service status..." -ForegroundColor Gray
     $serviceStatus = gcloud compute ssh blockchain-node `
         --zone=$Zone `
         --command='systemctl is-active blockchain' `
@@ -103,15 +160,29 @@ try {
     
     Write-Host "   Service status: $serviceStatus" -ForegroundColor Cyan
     
+    Write-Host "   Getting recent logs..." -ForegroundColor Gray
+    $vmLogs = gcloud compute ssh blockchain-node `
+        --zone=$Zone `
+        --command='sudo journalctl -u blockchain --no-pager -n 10' `
+        --project=$ProjectId 2>$null
+    
+    if ($vmLogs) {
+        Write-Host "   Recent logs:" -ForegroundColor Cyan
+        $vmLogs | ForEach-Object { Write-Host "     $_" -ForegroundColor Gray }
+    } else {
+        Write-Host "   ⚠️ Could not fetch logs" -ForegroundColor Yellow
+    }
+    
     if ($serviceStatus -ne "active") {
-        Write-Host "   ❌ Service not active! Attempting restart..." -ForegroundColor Red
+        Write-Host "   ❌ Service not active! Restarting..." -ForegroundColor Red
         
         gcloud compute ssh blockchain-node `
             --zone=$Zone `
             --command='sudo systemctl restart blockchain' `
             --project=$ProjectId
         
-        Start-Sleep -Seconds 10
+        Write-Host "   Waiting for service to restart..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 15
         
         $newStatus = gcloud compute ssh blockchain-node `
             --zone=$Zone `
@@ -120,388 +191,106 @@ try {
         
         Write-Host "   New service status: $newStatus" -ForegroundColor Cyan
     }
+    
 } catch {
-    Write-Host "   ❌ Could not check service status" -ForegroundColor Red
+    Write-Host "   ❌ Could not check service: $($_.Exception.Message)" -ForegroundColor Red
 }
 
 Write-Host ""
 
-# 5. Test API directly
-Write-Host "5. Testing API..." -ForegroundColor Yellow
-try {
-    if ([string]::IsNullOrEmpty($vmIp)) {
-        throw "VM IP is empty"
-    }
-    
-    $statusResponse = Invoke-RestMethod -Uri "http://$vmIp:8080/status" -TimeoutSec 15
-    Write-Host "   ✅ API is responding!" -ForegroundColor Green
-    Write-Host "   Status: $($statusResponse.status)" -ForegroundColor Cyan
-    Write-Host "   Blocks: $($statusResponse.blocks)" -ForegroundColor Cyan
-    Write-Host "   Pending: $($statusResponse.pending_transactions)" -ForegroundColor Cyan
-} catch {
-    Write-Host "   ❌ API not responding: $($_.Exception.Message)" -ForegroundColor Red
-    
-    # Try to restart the service
-    Write-Host "   Attempting to fix..." -ForegroundColor Yellow
-    try {
-        gcloud compute ssh blockchain-node `
-            --zone=$Zone `
-            --command='sudo systemctl stop blockchain && sudo systemctl start blockchain' `
-            --project=$ProjectId
-        
-        Write-Host "   Service restarted. Waiting 15 seconds..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 15
-        
-        # Test again
-        $retryResponse = Invoke-RestMethod -Uri "http://$vmIp:8080/status" -TimeoutSec 10
-        Write-Host "   ✅ API now responding after restart!" -ForegroundColor Green
-    } catch {
-        Write-Host "   ❌ Still not responding after restart" -ForegroundColor Red
-    }
-}
+# 5. Test with a simple message
+Write-Host "5. Testing with a simple message..." -ForegroundColor Yellow
 
-Write-Host ""
+$testMessage = @{
+    operation = "DEBUG_TEST"
+    entity = "TestEntity"
+    id = "DEBUG_001"
+    source = "FixedDebugScript"
+    timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffK")
+} | ConvertTo-Json -Compress
 
-# 6. Create improved blockchain service
-Write-Host "6. Deploying improved blockchain service..." -ForegroundColor Yellow
-
-$improvedScript = @"
-#!/usr/bin/env python3
-import json
-import time
-import hashlib
-import logging
-import threading
-from datetime import datetime
-from google.cloud import pubsub_v1
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import os
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/var/log/blockchain.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-
-class ImprovedBlockchain:
-    def __init__(self):
-        self.project_id = "$ProjectId"
-        self.subscription_path = f"projects/{self.project_id}/subscriptions/blockchain-sub"
-        self.blocks = []
-        self.transactions = []
-        self.running = True
-        
-        # Initialize Pub/Sub client with error handling
-        try:
-            self.subscriber = pubsub_v1.SubscriberClient()
-            logger.info(f"✅ Pub/Sub client initialized for project: {self.project_id}")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize Pub/Sub client: {e}")
-            raise
-        
-        logger.info(f"🔗 Blockchain initialized")
-        
-    def process_message(self, message):
-        try:
-            # Decode and parse message
-            data = json.loads(message.data.decode('utf-8'))
-            
-            # Add timestamp if not present
-            if 'timestamp' not in data:
-                data['timestamp'] = datetime.now().isoformat()
-            
-            # Create transaction
-            tx = {
-                'id': hashlib.sha256(f"{time.time()}{json.dumps(data, sort_keys=True)}".encode()).hexdigest()[:16],
-                'data': data,
-                'timestamp': datetime.now().isoformat(),
-                'message_id': message.message_id
-            }
-            
-            self.transactions.append(tx)
-            logger.info(f"✅ Transaction added: {tx['id']} - {data.get('operation', 'UNKNOWN')} {data.get('entity', 'UNKNOWN')}")
-            
-            # Create block every 2 transactions (lower threshold for testing)
-            if len(self.transactions) >= 2:
-                self.create_block()
-            
-            # Acknowledge message
-            message.ack()
-            logger.info(f"✅ Message acknowledged: {message.message_id}")
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ Invalid JSON in message: {e}")
-            message.nack()
-        except Exception as e:
-            logger.error(f"❌ Error processing message: {e}")
-            message.nack()
-    
-    def create_block(self):
-        try:
-            previous_hash = self.blocks[-1]['hash'] if self.blocks else '0' * 16
-            
-            block = {
-                'number': len(self.blocks) + 1,
-                'timestamp': datetime.now().isoformat(),
-                'transactions': self.transactions.copy(),
-                'previous_hash': previous_hash,
-                'transaction_count': len(self.transactions)
-            }
-            
-            # Calculate block hash
-            block_string = json.dumps(block, sort_keys=True, default=str)
-            block['hash'] = hashlib.sha256(block_string.encode()).hexdigest()[:16]
-            
-            self.blocks.append(block)
-            
-            logger.info(f"🎯 Block #{block['number']} created with {block['transaction_count']} transactions - Hash: {block['hash']}")
-            
-            # Clear transactions
-            self.transactions.clear()
-            
-        except Exception as e:
-            logger.error(f"❌ Error creating block: {e}")
-    
-    def start_api_server(self):
-        class APIHandler(BaseHTTPRequestHandler):
-            def __init__(self, blockchain, *args, **kwargs):
-                self.blockchain = blockchain
-                super().__init__(*args, **kwargs)
-            
-            def do_GET(self):
-                try:
-                    if self.path == '/status':
-                        response = {
-                            'status': 'running',
-                            'project': self.blockchain.project_id,
-                            'blocks': len(self.blockchain.blocks),
-                            'pending_transactions': len(self.blockchain.transactions),
-                            'timestamp': datetime.now().isoformat(),
-                            'subscription': self.blockchain.subscription_path,
-                            'uptime_seconds': int(time.time() - start_time)
-                        }
-                    elif self.path == '/blocks':
-                        response = {
-                            'blocks': self.blockchain.blocks[-10:],  # Last 10 blocks
-                            'total_blocks': len(self.blockchain.blocks),
-                            'latest_hash': self.blockchain.blocks[-1]['hash'] if self.blockchain.blocks else None
-                        }
-                    elif self.path == '/transactions':
-                        response = {
-                            'pending_transactions': self.blockchain.transactions,
-                            'total_pending': len(self.blockchain.transactions)
-                        }
-                    elif self.path == '/health':
-                        response = {
-                            'healthy': True,
-                            'pubsub_connected': hasattr(self.blockchain, 'subscriber'),
-                            'api_running': True,
-                            'timestamp': datetime.now().isoformat()
-                        }
-                    else:
-                        response = {
-                            'error': 'endpoint not found',
-                            'available_endpoints': ['/status', '/blocks', '/transactions', '/health']
-                        }
-                    
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-                    self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-                    self.end_headers()
-                    
-                    response_json = json.dumps(response, indent=2, default=str)
-                    self.wfile.write(response_json.encode())
-                    
-                except Exception as e:
-                    logger.error(f"API error: {e}")
-                    self.send_response(500)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    error_response = {'error': str(e)}
-                    self.wfile.write(json.dumps(error_response).encode())
-            
-            def do_OPTIONS(self):
-                self.send_response(200)
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-                self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-                self.end_headers()
-            
-            def log_message(self, format, *args):
-                # Suppress HTTP access logs to reduce noise
-                pass
-        
-        try:
-            server = HTTPServer(('0.0.0.0', 8080), lambda *args: APIHandler(self, *args))
-            threading.Thread(target=server.serve_forever, daemon=True).start()
-            logger.info("🌐 API server started on port 8080")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Failed to start API server: {e}")
-            return False
-    
-    def start_pubsub_listener(self):
-        logger.info(f"📡 Starting Pub/Sub listener for: {self.subscription_path}")
-        
-        try:
-            # Configure flow control
-            flow_control = pubsub_v1.types.FlowControl(max_messages=10)
-            
-            # Start listening
-            future = self.subscriber.subscribe(
-                self.subscription_path, 
-                callback=self.process_message,
-                flow_control=flow_control
-            )
-            
-            logger.info(f"✅ Listening for messages on {self.subscription_path}")
-            
-            # Keep the main thread running
-            with self.subscriber:
-                try:
-                    while self.running:
-                        time.sleep(10)
-                        # Periodic heartbeat
-                        logger.info(f"💓 Heartbeat - Blocks: {len(self.blocks)}, Pending: {len(self.transactions)}")
-                        
-                except KeyboardInterrupt:
-                    logger.info("🛑 Shutdown requested")
-                    self.running = False
-                finally:
-                    future.cancel()
-                    logger.info("📡 Pub/Sub listener stopped")
-                    
-        except Exception as e:
-            logger.error(f"❌ Pub/Sub listener error: {e}")
-            raise
-    
-    def run(self):
-        global start_time
-        start_time = time.time()
-        
-        logger.info("🚀 Starting improved blockchain service...")
-        
-        # Start API server
-        if not self.start_api_server():
-            logger.error("Failed to start API server")
-            return
-        
-        # Add some test data for immediate testing
-        test_tx = {
-            'id': 'INIT_001',
-            'data': {
-                'operation': 'INIT',
-                'entity': 'System',
-                'id': 'SYSTEM_INIT',
-                'message': 'Blockchain service started'
-            },
-            'timestamp': datetime.now().isoformat(),
-            'message_id': 'init'
-        }
-        self.transactions.append(test_tx)
-        logger.info("✅ Added initialization transaction")
-        
-        # Start Pub/Sub listener
-        self.start_pubsub_listener()
-
-if __name__ == "__main__":
-    try:
-        blockchain = ImprovedBlockchain()
-        blockchain.run()
-    except Exception as e:
-        logger.error(f"❌ Fatal error: {e}")
-        exit(1)
-"@
-
-# Create the improved script file
-$scriptContent = $improvedScript -replace '\$ProjectId', $ProjectId
-Write-Host "   Creating improved blockchain script..." -ForegroundColor Gray
-
-# Copy improved script to VM
-$scriptContent | Out-File -FilePath "improved-blockchain.py" -Encoding UTF8
-
-try {
-    gcloud compute scp improved-blockchain.py blockchain-node:/tmp/blockchain.py `
-        --zone=$Zone `
-        --project=$ProjectId
-    
-    # Deploy the improved script
-    gcloud compute ssh blockchain-node `
-        --zone=$Zone `
-        --command='sudo cp /tmp/blockchain.py /home/blockchain.py && sudo chmod +x /home/blockchain.py' `
-        --project=$ProjectId
-    
-    # Restart the service with the new script
-    gcloud compute ssh blockchain-node `
-        --zone=$Zone `
-        --command='sudo systemctl restart blockchain' `
-        --project=$ProjectId
-    
-    Write-Host "   ✅ Improved blockchain script deployed and service restarted" -ForegroundColor Green
-    
-} catch {
-    Write-Host "   ❌ Failed to deploy improved script: $($_.Exception.Message)" -ForegroundColor Red
-}
-
-# Clean up local file
-Remove-Item "improved-blockchain.py" -ErrorAction SilentlyContinue
-
-Write-Host ""
-
-# 7. Wait and test again
-Write-Host "7. Waiting for service to stabilize..." -ForegroundColor Yellow
-Start-Sleep -Seconds 15
-
-Write-Host "8. Testing improved setup..." -ForegroundColor Yellow
-
-# Test API
-try {
-    $healthResponse = Invoke-RestMethod -Uri "http://$vmIp:8080/health" -TimeoutSec 10
-    Write-Host "   ✅ Health check passed!" -ForegroundColor Green
-    $healthResponse | ConvertTo-Json -Depth 2 | Write-Host -ForegroundColor Gray
-} catch {
-    Write-Host "   ❌ Health check failed: $($_.Exception.Message)" -ForegroundColor Red
-}
-
-# Publish test message
 Write-Host "   Publishing test message..." -ForegroundColor Gray
-gcloud pubsub topics publish metadata-events `
-    --message='{"operation":"DEBUG","entity":"TestMessage","id":"DEBUG_001","source":"DebugScript","timestamp":"'$(Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffZ")'"}' `
-    --project=$ProjectId
+Write-Host "   Message: $testMessage" -ForegroundColor Cyan
 
-Start-Sleep -Seconds 10
-
-# Check results
 try {
-    $statusResponse = Invoke-RestMethod -Uri "http://$vmIp:8080/status" -TimeoutSec 10
-    Write-Host "   Status after test message:" -ForegroundColor Cyan
-    $statusResponse | ConvertTo-Json -Depth 2 | Write-Host -ForegroundColor Gray
+    $publishResult = gcloud pubsub topics publish metadata-events --message="$testMessage" --project=$ProjectId
+    Write-Host "   ✅ Message published successfully" -ForegroundColor Green
+    Write-Host "   Result: $publishResult" -ForegroundColor Gray
     
-    if ($statusResponse.blocks -gt 0 -or $statusResponse.pending_transactions -gt 0) {
-        Write-Host "   🎉 SUCCESS! Messages are now being processed!" -ForegroundColor Green
-    } else {
-        Write-Host "   ⚠️ No blocks or transactions yet. Check VM logs." -ForegroundColor Yellow
+    Write-Host "   Waiting 10 seconds for processing..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 10
+    
+    # Check if the message was processed
+    try {
+        $finalStatus = Invoke-RestMethod -Uri $statusUrl -TimeoutSec 10
+        Write-Host "   Final status:" -ForegroundColor Cyan
+        Write-Host "     Blocks: $($finalStatus.blocks)" -ForegroundColor Gray
+        Write-Host "     Pending: $($finalStatus.pending_transactions)" -ForegroundColor Gray
+        Write-Host "     Messages processed: $($finalStatus.total_messages_processed)" -ForegroundColor Gray
+        
+        if ($finalStatus.blocks -gt 0 -or $finalStatus.pending_transactions -gt 0) {
+            Write-Host "   🎉 SUCCESS! System is processing messages!" -ForegroundColor Green
+        } else {
+            Write-Host "   ⚠️ No activity detected after message" -ForegroundColor Yellow
+        }
+        
+    } catch {
+        Write-Host "   ❌ Could not verify message processing: $($_.Exception.Message)" -ForegroundColor Red
     }
+    
 } catch {
-    Write-Host "   ❌ Could not verify test results" -ForegroundColor Red
+    Write-Host "   ❌ Failed to publish test message: $($_.Exception.Message)" -ForegroundColor Red
 }
 
 Write-Host ""
-Write-Host "✅ Debug complete!" -ForegroundColor Green
+
+# 6. Summary and recommendations
+Write-Host "🎯 Summary and Recommendations:" -ForegroundColor Green
 Write-Host ""
-Write-Host "📋 Summary:" -ForegroundColor Yellow
-Write-Host "• VM IP: $vmIp" -ForegroundColor Gray
-Write-Host "• API: http://$vmIp:8080/status" -ForegroundColor Gray
-Write-Host "• Health: http://$vmIp:8080/health" -ForegroundColor Gray
+Write-Host "📋 Connection Details:" -ForegroundColor Yellow
+Write-Host "   • VM IP: $vmIp" -ForegroundColor Gray
+Write-Host "   • API Base: $apiBaseUrl" -ForegroundColor Gray
+Write-Host "   • Status: $statusUrl" -ForegroundColor Gray
+Write-Host "   • Health: $healthUrl" -ForegroundColor Gray
 Write-Host ""
-Write-Host "🔧 Troubleshooting commands:" -ForegroundColor Yellow
-Write-Host "• VM logs: gcloud compute ssh blockchain-node --zone=$Zone --command='sudo journalctl -u blockchain -f' --project=$ProjectId" -ForegroundColor Gray
-Write-Host "• Service status: gcloud compute ssh blockchain-node --zone=$Zone --command='systemctl status blockchain' --project=$ProjectId" -ForegroundColor Gray
-Write-Host "• Test message: gcloud pubsub topics publish metadata-events --message='{\"test\": \"manual\"}' --project=$ProjectId" -ForegroundColor Gray
+
+# Test the API one more time to give final verdict
+try {
+    $finalTest = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 5
+    Write-Host "✅ FINAL RESULT: API is working correctly!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "🚀 Quick test commands:" -ForegroundColor Yellow
+    Write-Host "   Invoke-RestMethod -Uri '$statusUrl'" -ForegroundColor Cyan
+    Write-Host "   Invoke-RestMethod -Uri '$healthUrl'" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "📊 Current state:" -ForegroundColor Yellow
+    Write-Host "   • Status: $($finalTest.status)" -ForegroundColor Gray
+    Write-Host "   • Uptime: $($finalTest.uptime_seconds) seconds" -ForegroundColor Gray
+    
+} catch {
+    Write-Host "❌ FINAL RESULT: API is still not responding" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "🔧 Troubleshooting next steps:" -ForegroundColor Yellow
+    Write-Host "1. Check if service is actually running:" -ForegroundColor Cyan
+    Write-Host "   gcloud compute ssh blockchain-node --zone=$Zone --command='sudo systemctl status blockchain' --project=$ProjectId" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "2. Check detailed logs:" -ForegroundColor Cyan
+    Write-Host "   gcloud compute ssh blockchain-node --zone=$Zone --command='sudo journalctl -u blockchain -f' --project=$ProjectId" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "3. Test internal connectivity:" -ForegroundColor Cyan
+    Write-Host "   gcloud compute ssh blockchain-node --zone=$Zone --command='curl -v localhost:8080/health' --project=$ProjectId" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "4. Restart everything:" -ForegroundColor Cyan
+    Write-Host "   gcloud compute instances reset blockchain-node --zone=$Zone --project=$ProjectId" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "5. If all else fails, redeploy:" -ForegroundColor Cyan
+    Write-Host "   .\cleanup-simple.ps1 -ProjectId $ProjectId -Force" -ForegroundColor Gray
+    Write-Host "   .\simple-gcp-deploy.ps1 -ProjectId $ProjectId" -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "💡 Tips for using the system:" -ForegroundColor Yellow
+Write-Host "• Use the fixed URLs shown above" -ForegroundColor Gray
+Write-Host "• Wait 5-10 minutes after VM startup for full initialization" -ForegroundColor Gray
+Write-Host "• Check VM logs if messages aren't being processed" -ForegroundColor Gray
+Write-Host "• Use 'gcloud compute instances reset' if the service won't start" -ForegroundColor Gray
