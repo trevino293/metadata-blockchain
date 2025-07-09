@@ -28,8 +28,8 @@
 [![PowerShell](https://img.shields.io/badge/PowerShell-%235391FE.svg?style=flat&logo=powershell&logoColor=white)](https://docs.microsoft.com/en-us/powershell/)
 [![COBOL](https://img.shields.io/badge/COBOL-Legacy--Ready-blue.svg)](https://www.gnu.org/software/gnucobol/)
 [![GCP](https://img.shields.io/badge/Google%20Cloud-%234285F4.svg?style=flat&logo=google-cloud&logoColor=white)](https://cloud.google.com/)
-[![Georgia Tech](https://img.shields.io/badge/Georgia%20Tech-CS6795-B3A369.svg?style=flat&logo=graduation-cap&logoColor=white)](https://gatech.edu)
-[![Term Project](https://img.shields.io/badge/Term%20Project-Summer%202025-003057.svg?style=flat&logo=calendar&logoColor=white)](https://catalog.gatech.edu)
+[![Georgia Tech](https://img.shields.io/badge/Georgia%20Tech-CS6795-B3A369.svg?style=flat&logo=graduation-cap&logoColor=white)](https://omscs.gatech.edu/)
+[![Term Project](https://img.shields.io/badge/Term%20Project-Summer%202025-003057.svg?style=flat&logo=calendar&logoColor=white)](https://omscs.gatech.edu/cs-6795-introduction-cognitive-science)
 
 **A private metadata blockchain platform for capturing and persisting data operations across heterogeneous systems, featuring COBOL legacy system integration and Google Cloud services.**
 
