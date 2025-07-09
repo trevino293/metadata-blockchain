@@ -1,0 +1,9 @@
+﻿# GCP Blockchain Connection Info
+Project ID: metadata-blockchain
+VM IP: 35.225.148.188
+API Endpoint: http://
+Zone: us-central1-a
+
+# Quick Commands:
+# Test: .\test-simple.ps1 metadata-blockchain
+# Cleanup: .\cleanup-simple.ps1 metadata-blockchain
