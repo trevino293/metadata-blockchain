@@ -5,3 +5,5 @@
 cobol-triggers.pipe
 
 pipes/
+
+docker-cobol-blockchain/fix-fabric-certificates.ps1
