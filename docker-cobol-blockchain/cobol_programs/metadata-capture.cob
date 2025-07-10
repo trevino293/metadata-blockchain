@@ -26,15 +26,15 @@ IDENTIFICATION DIVISION.
        01  WS-RECORD-ID        PIC X(10).
        01  WS-FILE-STATUS      PIC XX.
        01  WS-METADATA.
-           05  FILLER          PIC X(17) VALUE '{"source":"COBOL"'.
-           05  FILLER          PIC X(15) VALUE ',"operation":"'.
-           05  WS-OP-TYPE      PIC X(10) VALUE "CREATE".
-           05  FILLER          PIC X(17) VALUE '","timestamp":"'.
+           05  FILLER          PIC X(16) VALUE '{"source":"COBOL'.
+           05  FILLER          PIC X(14) VALUE ',"operation":"'.
+           05  WS-OP-TYPE      PIC X(8) VALUE "CREATE".
+           05  FILLER          PIC X(16) VALUE '","timestamp":"'.
            05  WS-TIME-STAMP   PIC X(26).
-           05  FILLER          PIC X(17) VALUE '","record_id":"'.
+           05  FILLER          PIC X(16) VALUE '","record_id":"'.
            05  WS-REC-ID       PIC X(10).
-           05  FILLER          PIC X(22) VALUE '","file":"MASTER.DAT"'.
-           05  FILLER          PIC X(15) VALUE ',"status":"00"'.
+           05  FILLER          PIC X(20) VALUE '","file":"MASTER.DAT'.
+           05  FILLER          PIC X(14) VALUE ',"status":"00"'.
            05  FILLER          PIC X(1)  VALUE '}'.
        
        PROCEDURE DIVISION.
