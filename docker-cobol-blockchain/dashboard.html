@@ -1,807 +1,992 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COBOL-Blockchain Integration Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+	<head>
+		<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>COBOL-Blockchain Integration Dashboard</title>
+				<style>
+					* {
+					margin: 0;
+					padding: 0;
+					box-sizing: border-box;
+					}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: #333;
-            min-height: 100vh;
-            padding: 20px;
-        }
+					body {
+					font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+					background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+					color: #333;
+					min-height: 100vh;
+					padding: 20px;
+					}
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+					.container {
+					max-width: 1400px;
+					margin: 0 auto;
+					}
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
-            backdrop-filter: blur(10px);
-        }
+					.header {
+					background: rgba(255, 255, 255, 0.95);
+					padding: 20px 30px;
+					border-radius: 15px;
+					box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+					margin-bottom: 30px;
+					backdrop-filter: blur(10px);
+					}
 
-        .header h1 {
-            color: #1e3c72;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
+					.header h1 {
+					color: #1e3c72;
+					font-size: 2.2em;
+					margin-bottom: 8px;
+					}
 
-        .header p {
-            color: #666;
-            font-size: 1.1em;
-        }
+					.header p {
+					color: #666;
+					font-size: 1em;
+					}
 
-        .status-bar {
-            display: flex;
-            gap: 20px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
+					.status-bar {
+					display: flex;
+					gap: 15px;
+					margin-top: 15px;
+					flex-wrap: wrap;
+					}
 
-        .status-item {
-            background: #f0f4f8;
-            padding: 15px 25px;
-            border-radius: 10px;
-            flex: 1;
-            min-width: 200px;
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
+					.status-item {
+					background: #f8f9fa;
+					padding: 12px 20px;
+					border-radius: 8px;
+					flex: 1;
+					min-width: 160px;
+					text-align: center;
+					transition: transform 0.3s ease;
+					border: 2px solid transparent;
+					}
 
-        .status-item:hover {
-            transform: translateY(-3px);
-        }
+					.status-item:hover {
+					transform: translateY(-2px);
+					}
 
-        .status-item.active {
-            background: #4CAF50;
-            color: white;
-        }
+					.status-item.active {
+					background: #e8f5e8;
+					border-color: #4CAF50;
+					color: #2e7d32;
+					}
 
-        .status-item.inactive {
-            background: #f44336;
-            color: white;
-        }
+					.status-item.inactive {
+					background: #ffebee;
+					border-color: #f44336;
+					color: #c62828;
+					}
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
+					.status-item strong {
+					display: block;
+					font-size: 0.9em;
+					margin-bottom: 4px;
+					}
 
-        @media (max-width: 1024px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-        }
+					.status-item span {
+					font-size: 0.85em;
+					}
 
-        .panel {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-        }
+					.controls {
+					display: flex;
+					gap: 15px;
+					margin-bottom: 30px;
+					align-items: center;
+					flex-wrap: wrap;
+					background: rgba(255, 255, 255, 0.1);
+					padding: 15px;
+					border-radius: 10px;
+					backdrop-filter: blur(10px);
+					}
 
-        .panel h2 {
-            color: #1e3c72;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+					.btn {
+					background: linear-gradient(45deg, #2a5298, #1e3c72);
+					color: white;
+					border: none;
+					padding: 10px 20px;
+					border-radius: 8px;
+					cursor: pointer;
+					font-size: 0.9em;
+					font-weight: 500;
+					transition: all 0.3s ease;
+					display: flex;
+					align-items: center;
+					gap: 8px;
+					}
 
-        .panel h2::before {
-            content: '';
-            width: 5px;
-            height: 25px;
-            background: #2a5298;
-            border-radius: 3px;
-        }
+					.btn:hover {
+					transform: translateY(-2px);
+					box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+					}
 
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
+					.btn.secondary {
+					background: #6c757d;
+					}
 
-        .data-table th {
-            background: #2a5298;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-        }
+					.btn.secondary:hover {
+					background: #5a6268;
+					}
 
-        .data-table td {
-            padding: 12px;
-            border-bottom: 1px solid #e0e0e0;
-        }
+					.filter-input {
+					padding: 10px 15px;
+					border: 2px solid rgba(255, 255, 255, 0.3);
+					border-radius: 8px;
+					font-size: 0.9em;
+					flex: 1;
+					min-width: 200px;
+					background: rgba(255, 255, 255, 0.9);
+					transition: border-color 0.3s ease;
+					}
 
-        .data-table tr:hover {
-            background: #f5f5f5;
-        }
+					.filter-input:focus {
+					outline: none;
+					border-color: #2a5298;
+					}
 
-        .transaction-item {
-            background: #f8f9fa;
-            border-left: 4px solid #2a5298;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-        }
+					/* Statistics Section */
+					.stats-section {
+					background: rgba(255, 255, 255, 0.95);
+					padding: 20px;
+					border-radius: 12px;
+					margin-bottom: 20px;
+					box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+					}
 
-        .transaction-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
+					.stats-grid {
+					display: grid;
+					grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+					gap: 15px;
+					}
 
-        .transaction-item.new {
-            border-left-color: #4CAF50;
-            animation: slideIn 0.5s ease;
-        }
+					.stat-card {
+					background: #f8f9fa;
+					padding: 15px;
+					border-radius: 8px;
+					text-align: center;
+					transition: all 0.3s ease;
+					border: 2px solid #e9ecef;
+					}
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
+					.stat-card:hover {
+					transform: translateY(-3px);
+					box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+					border-color: #2a5298;
+					}
 
-        .timestamp {
-            color: #666;
-            font-size: 0.9em;
-        }
+					.stat-number {
+					font-size: 1.8em;
+					font-weight: bold;
+					color: #2a5298;
+					margin: 5px 0;
+					}
 
-        .record-id {
-            font-family: 'Courier New', monospace;
-            background: #e3f2fd;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
+					.stat-label {
+					color: #666;
+					font-size: 0.85em;
+					font-weight: 500;
+					}
 
-        .operation {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 15px;
-            font-size: 0.85em;
-            font-weight: 600;
-            margin-left: 10px;
-        }
+					/* Tabbed Table Section */
+					.table-section {
+					background: rgba(255, 255, 255, 0.95);
+					border-radius: 12px;
+					box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+					overflow: hidden;
+					}
 
-        .operation.create {
-            background: #4CAF50;
-            color: white;
-        }
+					.tab-container {
+					border-bottom: 1px solid #e9ecef;
+					}
 
-        .operation.update {
-            background: #2196F3;
-            color: white;
-        }
+					.tab-nav {
+					display: flex;
+					background: #f8f9fa;
+					justify-content: flex-start;
+					padding: 0;
+					}
 
-        .operation.detect {
-            background: #FF9800;
-            color: white;
-        }
+					.tab-button {
+					background: none;
+					border: none;
+					padding: 12px 20px;
+					cursor: pointer;
+					font-size: 0.9em;
+					font-weight: 500;
+					color: #666;
+					transition: all 0.3s ease;
+					border-bottom: 3px solid transparent;
+					border-radius: 8px 8px 0 0;
+					margin-right: 2px;
+					position: relative;
+					}
 
-        .blockchain-block {
-            background: #f0f7ff;
-            border: 2px solid #2196F3;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            position: relative;
-            transition: all 0.3s ease;
-        }
+					.tab-button:hover {
+					background: #e9ecef;
+					color: #333;
+					}
 
-        .blockchain-block:hover {
-            box-shadow: 0 5px 20px rgba(33, 150, 243, 0.3);
-        }
+					.tab-button.active {
+					background: white;
+					color: #2a5298;
+					border-bottom-color: #2a5298;
+					z-index: 1;
+					}
 
-        .block-number {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #2196F3;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-        }
+					.tab-content {
+					padding: 20px;
+					}
 
-        .hash {
-            font-family: 'Courier New', monospace;
-            font-size: 0.85em;
-            color: #666;
-            word-break: break-all;
-            margin-top: 10px;
-            padding: 10px;
-            background: #e8f4f8;
-            border-radius: 5px;
-        }
+					.tab-pane {
+					display: none;
+					}
 
-        .controls {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+					.tab-pane.active {
+					display: block;
+					}
 
-        .btn {
-            background: #2a5298;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
+					.data-table {
+					width: 100%;
+					border-collapse: collapse;
+					margin-bottom: 20px;
+					}
 
-        .btn:hover {
-            background: #1e3c72;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
+					.data-table th,
+					.data-table td {
+					padding: 12px;
+					text-align: left;
+					border-bottom: 1px solid #e9ecef;
+					}
 
-        .btn:active {
-            transform: translateY(0);
-        }
+					.data-table th {
+					background: #f8f9fa;
+					font-weight: 600;
+					color: #333;
+					font-size: 0.9em;
+					}
 
-        .btn.secondary {
-            background: #6c757d;
-        }
+					.data-table tr:hover {
+					background: #f8f9fa;
+					}
 
-        .btn.secondary:hover {
-            background: #5a6268;
-        }
+					.data-table td {
+					font-size: 0.85em;
+					}
 
-        .refresh-indicator {
-            display: inline-block;
-            margin-left: 10px;
-            animation: spin 2s linear infinite;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+					/* Pagination */
+					.pagination {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					margin-top: 15px;
+					padding-top: 15px;
+					border-top: 1px solid #e9ecef;
+					}
 
-        .refresh-indicator.active {
-            opacity: 1;
-        }
+					.pagination-info {
+					color: #666;
+					font-size: 0.85em;
+					}
 
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+					.pagination-controls {
+					display: flex;
+					gap: 10px;
+					align-items: center;
+					}
 
-        .filter-input {
-            padding: 10px 15px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            flex: 1;
-            min-width: 200px;
-            transition: border-color 0.3s ease;
-        }
+					.page-btn {
+					background: #f8f9fa;
+					border: 1px solid #dee2e6;
+					padding: 8px 12px;
+					border-radius: 6px;
+					cursor: pointer;
+					font-size: 0.85em;
+					transition: all 0.3s ease;
+					}
 
-        .filter-input:focus {
-            outline: none;
-            border-color: #2a5298;
-        }
+					.page-btn:hover:not(:disabled) {
+					background: #e9ecef;
+					}
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
+					.page-btn:disabled {
+					opacity: 0.5;
+					cursor: not-allowed;
+					}
 
-        .stat-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
+					.page-btn.active {
+					background: #2a5298;
+					color: white;
+					border-color: #2a5298;
+					}
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        }
+					.loading {
+					text-align: center;
+					padding: 40px;
+					color: #999;
+					}
 
-        .stat-number {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: #2a5298;
-            margin: 10px 0;
-        }
+					.loading::after {
+					content: '';
+					animation: dots 1.5s steps(4, end) infinite;
+					}
 
-        .stat-label {
-            color: #666;
-            font-size: 1.1em;
-        }
+					@keyframes dots {
+					0%, 20% { content: ''; }
+					40% { content: '.'; }
+					60% { content: '..'; }
+					80%, 100% { content: '...'; }
+					}
 
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-            font-style: italic;
-        }
+					.no-data {
+					text-align: center;
+					padding: 40px;
+					color: #999;
+					font-style: italic;
+					}
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-        }
+					.refresh-indicator {
+					display: inline-block;
+					animation: spin 2s linear infinite;
+					opacity: 0;
+					transition: opacity 0.3s ease;
+					}
 
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s steps(4, end) infinite;
-        }
+					.refresh-indicator.active {
+					opacity: 1;
+					}
 
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>COBOL-Blockchain Integration Dashboard</h1>
-            <p>Real-time monitoring of legacy COBOL systems integrated with Hyperledger Fabric</p>
-            
-            <div class="status-bar">
-                <div class="status-item active" id="cobol-status">
-                    <strong>COBOL System</strong><br>
-                    <span>Active</span>
-                </div>
-                <div class="status-item active" id="blockchain-status">
-                    <strong>Blockchain</strong><br>
-                    <span>Connected</span>
-                </div>
-                <div class="status-item" id="adapter-status">
-                    <strong>Adapter</strong><br>
-                    <span>Running</span>
-                </div>
-                <div class="status-item" id="last-sync">
-                    <strong>Last Sync</strong><br>
-                    <span id="sync-time">Never</span>
-                </div>
-            </div>
-        </div>
+					@keyframes spin {
+					from { transform: rotate(0deg); }
+					to { transform: rotate(360deg); }
+					}
 
-        <div class="controls">
-            <button class="btn" onclick="refreshData()">
-                Refresh Data
-                <span class="refresh-indicator" id="refresh-indicator">⟳</span>
-            </button>
-            <button class="btn secondary" onclick="clearFilters()">Clear Filters</button>
-            <input type="text" class="filter-input" id="filter-input" placeholder="Filter by record ID or file name...">
-            <button class="btn" onclick="simulateTransaction()">Simulate Transaction</button>
-        </div>
+					@media (max-width: 768px) {
+					.container {
+					padding: 10px;
+					}
 
-        <div class="main-content">
-            <div class="panel">
-                <h2>COBOL Data Sources</h2>
-                <div class="loading" id="cobol-loading">Loading COBOL data</div>
-                <div id="cobol-data" style="display: none;">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Record ID</th>
-                                <th>File</th>
-                                <th>Operation</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cobol-tbody">
-                        </tbody>
-                    </table>
-                    <div class="no-data" id="cobol-no-data" style="display: none;">
-                        No COBOL transactions found
-                    </div>
-                </div>
-            </div>
+					.header {
+					padding: 15px 20px;
+					}
 
-            <div class="panel">
-                <h2>Blockchain Ledger</h2>
-                <div class="loading" id="blockchain-loading">Loading blockchain data</div>
-                <div id="blockchain-data" style="display: none;">
-                    <div id="blockchain-blocks">
-                    </div>
-                    <div class="no-data" id="blockchain-no-data" style="display: none;">
-                        No blockchain blocks found
-                    </div>
-                </div>
-            </div>
-        </div>
+					.header h1 {
+					font-size: 1.8em;
+					}
 
-        <div class="panel">
-            <h2>Transaction Statistics</h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total Transactions</div>
-                    <div class="stat-number" id="total-transactions">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Blockchain Blocks</div>
-                    <div class="stat-number" id="total-blocks">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Files Monitored</div>
-                    <div class="stat-number" id="files-monitored">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Success Rate</div>
-                    <div class="stat-number" id="success-rate">100%</div>
-                </div>
-            </div>
-        </div>
-    </div>
+					.stats-grid {
+					grid-template-columns: repeat(2, 1fr);
+					}
 
-    <script>
-        // Configuration
-        const API_BASE_URL = 'http://localhost:8080/api';  // Change this if your Docker container maps to a different port
-        
-        // Data storage
-        let cobolData = [];
-        let blockchainData = [];
-        let stats = {};
-        let isConnected = false;
+					.controls {
+					flex-direction: column;
+					align-items: stretch;
+					}
 
-        // Fetch data from API
-        async function fetchData(endpoint) {
-            try {
-                const response = await fetch(`${API_BASE_URL}${endpoint}`);
-                if (!response.ok) throw new Error('Network response was not ok');
-                return await response.json();
-            } catch (error) {
-                console.error(`Error fetching ${endpoint}:`, error);
-                return null;
-            }
-        }
+					.tab-nav {
+					flex-direction: column;
+					}
+					}
+				</style>
+			</head>
+	<body>
+		<div class="container">
+			<div class="header">
+				<h1>COBOL-Blockchain Integration Dashboard</h1>
+				<p>Real-time monitoring of legacy COBOL systems integrated with Hyperledger Fabric</p>
 
-        // Fetch all data from API
-        async function fetchAllData() {
-            try {
-                // Fetch transactions
-                const transactionsResponse = await fetchData('/transactions');
-                if (transactionsResponse) {
-                    cobolData = transactionsResponse.transactions.reverse(); // Most recent first
-                    isConnected = true;
+				<div class="status-bar">
+					<div class="status-item active" id="cobol-status">
+						<strong>COBOL System</strong>
+						<span>Active</span>
+					</div>
+					<div class="status-item active" id="blockchain-status">
+						<strong>Blockchain</strong>
+						<span>Connected</span>
+					</div>
+					<div class="status-item" id="adapter-status">
+						<strong>Adapter</strong>
+						<span>Running</span>
+					</div>
+					<div class="status-item" id="last-sync">
+						<strong>Last Sync</strong>
+						<span id="sync-time">Never</span>
+					</div>
+				</div>
+			</div>
+
+			<div class="controls">
+				<button class="btn" onclick="refreshData()">
+					Refresh Data
+					<span class="refresh-indicator" id="refresh-indicator">⟳</span>
+				</button>
+				<button class="btn secondary" onclick="clearFilters()">Clear Filters</button>
+				<input type="text" class="filter-input" id="filter-input" placeholder="Filter by record ID or file name...">
+					<button class="btn" onclick="simulateTransaction()">Simulate Transaction</button>
+				</div>
+
+			<!-- Statistics Section -->
+			<div class="stats-section">
+				<div class="stats-grid">
+					<div class="stat-card">
+						<div class="stat-number" id="total-transactions">0</div>
+						<div class="stat-label">Total Transactions</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-number" id="total-blocks">0</div>
+						<div class="stat-label">Total Blocks</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-number" id="active-files">0</div>
+						<div class="stat-label">Active Files</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-number" id="pending-ops">0</div>
+						<div class="stat-label">Pending Operations</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-number" id="error-count">0</div>
+						<div class="stat-label">Errors (24h)</div>
+					</div>
+					<div class="stat-card">
+						<div class="stat-number" id="throughput">0</div>
+						<div class="stat-label">Ops/Min</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tabbed Table Section -->
+			<div class="table-section">
+				<div class="tab-container">
+					<div class="tab-nav">
+						<button class="tab-button active" onclick="switchTab('transactions')">
+							Recent Transactions
+						</button>
+						<button class="tab-button" onclick="switchTab('blocks')">
+							Blockchain Blocks
+						</button>
+					</div>
+				</div>
+
+				<div class="tab-content">
+					<!-- Transactions Tab -->
+					<div id="transactions-tab" class="tab-pane active">
+						<div class="loading" id="transactions-loading">Loading transactions</div>
+						<div id="transactions-data" style="display: none;">
+							<table class="data-table">
+								<thead>
+									<tr>
+										<th>Transaction ID</th>
+										<th>Operation</th>
+										<th>Entity</th>
+										<th>Source File</th>
+										<th>Timestamp</th>
+										<th>Status</th>
+									</tr>
+								</thead>
+								<tbody id="transactions-tbody">
+									<!-- Dynamic content -->
+								</tbody>
+							</table>
+							<div class="pagination">
+								<div class="pagination-info" id="transactions-info">
+									Showing 0-0 of 0 transactions
+								</div>
+								<div class="pagination-controls">
+									<button class="page-btn" id="trans-prev" onclick="previousPage('transactions')" disabled="">
+										← Previous
+									</button>
+									<span id="trans-page-numbers"></span>
+									<button class="page-btn" id="trans-next" onclick="nextPage('transactions')">
+										Next →
+									</button>
+								</div>
+							</div>
+						</div>
+						<div id="transactions-no-data" class="no-data" style="display: none;">
+							No transactions found
+						</div>
+					</div>
+
+					<!-- Blocks Tab -->
+					<div id="blocks-tab" class="tab-pane">
+						<div class="loading" id="blocks-loading">Loading blocks</div>
+						<div id="blocks-data" style="display: none;">
+							<table class="data-table">
+								<thead>
+									<tr>
+										<th>Block Number</th>
+										<th>Hash</th>
+										<th>Previous Hash</th>
+										<th>Transactions</th>
+										<th>Timestamp</th>
+										<th>Size</th>
+									</tr>
+								</thead>
+								<tbody id="blocks-tbody">
+									<!-- Dynamic content -->
+								</tbody>
+							</table>
+							<div class="pagination">
+								<div class="pagination-info" id="blocks-info">
+									Showing 0-0 of 0 blocks
+								</div>
+								<div class="pagination-controls">
+									<button class="page-btn" id="blocks-prev" onclick="previousPage('blocks')" disabled="">
+										← Previous
+									</button>
+									<span id="blocks-page-numbers"></span>
+									<button class="page-btn" id="blocks-next" onclick="nextPage('blocks')">
+										Next →
+									</button>
+								</div>
+							</div>
+						</div>
+						<div id="blocks-no-data" class="no-data" style="display: none;">
+							No blocks found
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			// Global state
+			let currentTab = 'transactions';
+			let currentPage = { transactions: 1, blocks: 1 };
+			let pageSize = 10;
+			let totalPages = { transactions: 1, blocks: 1 };
+			let allData = { transactions: [], blocks: [] };
+			let filteredData = { transactions: [], blocks: [] };
+
+			// API configuration
+			const API_BASE_URL = 'http://localhost:8080';
+			const API_ENDPOINTS = {
+			status: '/status',
+			transactions: '/api/transactions', // Updated to match your API
+			blocks: '/api/blocks', // Updated to match your API
+			stats: '/api/stats'
+			};
+
+			// Initialize dashboard
+			document.addEventListener('DOMContentLoaded', function() {
+			refreshData();
+			checkSystemStatus();
+			setInterval(refreshData, 30000); // Auto-refresh every 30 seconds
+			setInterval(checkSystemStatus, 60000); // Check status every minute
+			});
+
+			// Fetch data from API
+			async function fetchData(endpoint) {
+			try {
+			const response = await fetch(API_BASE_URL + endpoint);
+			if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			return await response.json();
+			} catch (error) {
+			console.error(`Error fetching ${endpoint}:`, error);
+			updateConnectionStatus(false);
+			return null;
+			}
+			}
+
+			async function loadTransactions() {
+			const data = await fetchData(API_ENDPOINTS.transactions);
+			if (data && data.transactions && Array.isArray(data.transactions)) {
+			allData.transactions = data.transactions;
+			filteredData.transactions = [...data.transactions];
+			} else {
+			// Fallback to empty array if API fails
+			allData.transactions = [];
+			filteredData.transactions = [];
+			}
+			}
+
+			async function loadBlocks() {
+			const data = await fetchData(API_ENDPOINTS.blocks);
+			if (data && data.blocks && Array.isArray(data.blocks)) {
+			allData.blocks = data.blocks;
+			filteredData.blocks = [...data.blocks];
+			} else {
+			// Fallback to empty array if API fails
+			allData.blocks = [];
+			filteredData.blocks = [];
+			}
+			}
+
+			async function loadStatistics() {
+			const data = await fetchData(API_ENDPOINTS.stats);
+			if (data) {
+			updateStatistics(data);
+			} else {
+			// Use default values if API fails
+			updateStatistics({
+			totalTransactions: allData.transactions.length,
+			totalBlocks: allData.blocks.length,
+			filesMonitored: 0,
+			successRate: 0,
+			pendingOps: 0,
+			errorCount: 0
+			});
+			}
+			}
+
+			async function checkSystemStatus() {
+			const data = await fetchData(API_ENDPOINTS.status);
+			if (data) {
+			updateSystemStatus(data);
+			updateConnectionStatus(true);
+			} else {
+			updateConnectionStatus(false);
+			}
+			}
+
+			function switchTab(tabName) {
+			// Update tab buttons
+			document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+			event.target.classList.add('active');
+
+			// Update tab panes
+			document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+			document.getElementById(tabName + '-tab').classList.add('active');
+
+			currentTab = tabName;
+			renderTable(tabName);
+			}
+
+			function refreshData() {
+			const indicator = document.getElementById('refresh-indicator');
+			indicator.classList.add('active');
+
+			// Load all data concurrently
+			Promise.all([
+			loadTransactions(),
+			loadBlocks(),
+			loadStatistics()
+			]).then(() => {
+			renderTable(currentTab);
+			updateSyncTime();
+			indicator.classList.remove('active');
+			}).catch(error => {
+			console.error('Error refreshing data:', error);
+			indicator.classList.remove('active');
+			});
+			}
+
+			function updateStatistics(data = {}) {
+			document.getElementById('total-transactions').textContent = data.totalTransactions || allData.transactions.length;
+			document.getElementById('total-blocks').textContent = data.totalBlocks || allData.blocks.length;
+			document.getElementById('active-files').textContent = data.filesMonitored || '0';
+			document.getElementById('pending-ops').textContent = data.pendingOps || '0';
+			document.getElementById('error-count').textContent = data.errorCount || '0';
+			document.getElementById('throughput').textContent = data.successRate || '0';
+			}
+
+			function updateSystemStatus(statusData) {
+			// Update COBOL system status
+			const cobolStatus = document.getElementById('cobol-status');
+			if (statusData.cobolSystem === 'active' || statusData.cobol?.active) {
+			cobolStatus.className = 'status-item active';
+			cobolStatus.querySelector('span').textContent = 'Active';
+			} else {
+			cobolStatus.className = 'status-item inactive';
+			cobolStatus.querySelector('span').textContent = 'Inactive';
+			}
+
+			// Update blockchain status
+			const blockchainStatus = document.getElementById('blockchain-status');
+			if (statusData.blockchain === 'connected' || statusData.blockchain?.connected || statusData.status === 'running') {
+			blockchainStatus.className = 'status-item active';
+			blockchainStatus.querySelector('span').textContent = 'Connected';
+			} else {
+			blockchainStatus.className = 'status-item inactive';
+			blockchainStatus.querySelector('span').textContent = 'Disconnected';
+			}
+
+			// Update adapter status
+			const adapterStatus = document.getElementById('adapter-status');
+			if (statusData.adapter === 'running' || statusData.adapter?.running || statusData.status === 'running') {
+			adapterStatus.className = 'status-item active';
+			adapterStatus.querySelector('span').textContent = 'Running';
+			} else {
+			adapterStatus.className = 'status-item inactive';
+			adapterStatus.querySelector('span').textContent = 'Stopped';
+			}
+			}
+
+			function updateConnectionStatus(connected) {
+			const statusItems = document.querySelectorAll('.status-item');
+			if (!connected) {
+			statusItems.forEach(item => {
+			if (!item.classList.contains('inactive')) {
+			item.classList.remove('active');
+			item.classList.add('inactive');
+			item.querySelector('span').textContent = 'Disconnected';
+			}
+			});
+			}
+			}
+
+			function updateSyncTime() {
+			document.getElementById('sync-time').textContent = new Date().toLocaleTimeString();
+			}
+
+			function renderTable(tabName) {
+			const data = filteredData[tabName];
+			const tbody = document.getElementById(tabName + '-tbody');
+			const loading = document.getElementById(tabName + '-loading');
+			const dataDiv = document.getElementById(tabName + '-data');
+			const noDataDiv = document.getElementById(tabName + '-no-data');
+
+			// Show loading
+			loading.style.display = 'block';
+			dataDiv.style.display = 'none';
+			noDataDiv.style.display = 'none';
+
+			setTimeout(() => {
+			if (data.length === 0) {
+			loading.style.display = 'none';
+			noDataDiv.style.display = 'block';
+			return;
+			}
+
+			// Calculate pagination
+			totalPages[tabName] = Math.ceil(data.length / pageSize);
+			const startIndex = (currentPage[tabName] - 1) * pageSize;
+			const endIndex = Math.min(startIndex + pageSize, data.length);
+			const pageData = data.slice(startIndex, endIndex);
+
+			// Render table rows
+			tbody.innerHTML = '';
+			pageData.forEach(item => {
+			const row = createTableRow(tabName, item);
+			tbody.appendChild(row);
+			});
+
+			// Update pagination info
+			updatePaginationInfo(tabName, startIndex, endIndex, data.length);
+			updatePaginationControls(tabName);
+
+			loading.style.display = 'none';
+			dataDiv.style.display = 'block';
+			}, 500);
+			}
+
+			function createTableRow(tabName, item) {
+			const row = document.createElement('tr');
+
+			if (tabName === 'transactions') {
+			row.innerHTML = `
+			<td>${item.id}</td>
+			<td>
+				<span class="operation-badge">${item.operation}</span>
+			</td>
+			<td>${item.entity}</td>
+			<td>${item.file}</td>
+			<td>${formatDate(item.timestamp)}</td>
+			<td>
+				<span class="status-badge ${item.status.toLowerCase()}">${item.status}</span>
+			</td>
+			`;
+			} else if (tabName === 'blocks') {
+			row.innerHTML = `
+			<td>${item.number}</td>
+			<td>${item.hash}</td>
+			<td>${item.prevHash}</td>
+			<td>${item.transactions}</td>
+			<td>${formatDate(item.timestamp)}</td>
+			<td>${item.size}</td>
+			`;
+			}
+
+			return row;
+			}
+
+			function updatePaginationInfo(tabName, startIndex, endIndex, total) {
+			const info = document.getElementById(tabName + '-info');
+			info.textContent = `Showing ${startIndex + 1}-${endIndex} of ${total} ${tabName}`;
+			}
+
+			function updatePaginationControls(tabName) {
+			const prevBtn = document.getElementById(tabName === 'transactions' ? 'trans-prev' : 'blocks-prev');
+			const nextBtn = document.getElementById(tabName === 'transactions' ? 'trans-next' : 'blocks-next');
+			const pageNumbers = document.getElementById(tabName === 'transactions' ? 'trans-page-numbers' : 'blocks-page-numbers');
+
+			prevBtn.disabled = currentPage[tabName] <= 1;
+			nextBtn.disabled = currentPage[tabName] >= totalPages[tabName];
+
+			// Generate smart page numbers (show first few, current, and last few)
+			pageNumbers.innerHTML = '';
+
+			if (totalPages[tabName] <= 7) {
+			// Show all pages if 7 or fewer
+			for (let i = 1; i <= totalPages[tabName]; i++) {
+			const pageBtn = createPageButton(tabName, i);
+			pageNumbers.appendChild(pageBtn);
+			}
+			} else {
+			// Smart pagination: show first, current range, and last
+			const current = currentPage[tabName];
+			const total = totalPages[tabName];
+
+			// Always show page 1
+			pageNumbers.appendChild(createPageButton(tabName, 1));
+
+			if (current > 4) {
+			// Add ellipsis if current page is far from start
+			const ellipsis = document.createElement('span');
+			ellipsis.textContent = '...';
+			ellipsis.className = 'page-ellipsis';
+			pageNumbers.appendChild(ellipsis);
+			}
+
+			// Show pages around current page
+			const start = Math.max(2, current - 1);
+			const end = Math.min(total - 1, current + 1);
+
+			for (let i = start; i <= end; i++) {
+			if (i !== 1 && i !== total) {
+			pageNumbers.appendChild(createPageButton(tabName, i));
+			}
+			}
+
+			if (current < total - 3) {
+                    // Add ellipsis if current page is far from end
+                    const ellipsis = document.createElement('span');
+                    ellipsis.textContent = '...';
+                    ellipsis.className = 'page-ellipsis';
+                    pageNumbers.appendChild(ellipsis);
                 }
-
-                // Fetch blocks
-                const blocksResponse = await fetchData('/blocks');
-                if (blocksResponse) {
-                    blockchainData = blocksResponse.blocks.reverse(); // Most recent first
+                
+                // Always show last page (if not already shown)
+                if (total > 1) {
+                    pageNumbers.appendChild(createPageButton(tabName, total));
                 }
-
-                // Fetch stats
-                const statsResponse = await fetchData('/stats');
-                if (statsResponse) {
-                    stats = statsResponse;
-                }
-
-                // Update status
-                const statusResponse = await fetchData('/status');
-                if (statusResponse) {
-                    updateSystemStatus(statusResponse);
-                }
-
-                return true;
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                isConnected = false;
-                return false;
             }
         }
 
-        // Update system status indicators
-        function updateSystemStatus(status) {
-            // Update COBOL status
-            const cobolStatus = document.getElementById('cobol-status');
-            if (status.cobolSystem === 'active') {
-                cobolStatus.classList.add('active');
-                cobolStatus.querySelector('span').textContent = 'Active';
-            } else {
-                cobolStatus.classList.remove('active');
-                cobolStatus.classList.add('inactive');
-                cobolStatus.querySelector('span').textContent = 'Inactive';
-            }
+        function createPageButton(tabName, pageNum) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = `page-btn ${pageNum === currentPage[tabName] ? 'active' : ''}`;
+            pageBtn.textContent = pageNum;
+            pageBtn.onclick = () => goToPage(tabName, pageNum);
+            return pageBtn;
+        }
 
-            // Update blockchain status
-            const blockchainStatus = document.getElementById('blockchain-status');
-            if (status.blockchain === 'connected') {
-                blockchainStatus.classList.add('active');
-                blockchainStatus.querySelector('span').textContent = 'Connected';
-            } else {
-                blockchainStatus.classList.remove('active');
-                blockchainStatus.classList.add('inactive');
-                blockchainStatus.querySelector('span').textContent = 'Disconnected';
-            }
-
-            // Update adapter status
-            const adapterStatus = document.getElementById('adapter-status');
-            if (status.adapter === 'running') {
-                adapterStatus.classList.add('active');
-                adapterStatus.querySelector('span').textContent = 'Running';
-            } else {
-                adapterStatus.classList.remove('active');
-                adapterStatus.classList.add('inactive');
-                adapterStatus.querySelector('span').textContent = 'Stopped';
+        function previousPage(tabName) {
+            if (currentPage[tabName] > 1) {
+                currentPage[tabName]--;
+                renderTable(tabName);
             }
         }
 
-        // Initialize with fallback sample data if API is not available
-        function initializeFallbackData() {
-            // Only use if API connection fails
-            if (!isConnected) {
-                cobolData = [
-                    {
-                        recordId: 'DEMO001',
-                        file: 'DEMO.DAT',
-                        operation: 'CREATE',
-                        timestamp: new Date().toISOString(),
-                        status: '00'
-                    }
-                ];
-                blockchainData = [
-                    {
-                        blockNumber: 1,
-                        hash: '0'.repeat(64),
-                        previousHash: '0'.repeat(64),
-                        timestamp: new Date().toISOString(),
-                        transactions: [{
-                            source: 'COBOL',
-                            recordId: 'DEMO001',
-                            operation: 'CREATE',
-                            file: 'DEMO.DAT'
-                        }]
-                    }
-                ];
-                stats = {
-                    totalTransactions: 1,
-                    totalBlocks: 1,
-                    filesMonitored: 1,
-                    successRate: 100
-                };
+        function nextPage(tabName) {
+            if (currentPage[tabName] < totalPages[tabName]) {
+                currentPage[tabName]++;
+                renderTable(tabName);
             }
         }
 
-        // Format timestamp
-        function formatTimestamp(timestamp) {
-            const date = new Date(timestamp);
-            return date.toLocaleString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
+        function goToPage(tabName, page) {
+            currentPage[tabName] = page;
+            renderTable(tabName);
         }
 
-        // Render COBOL data
-        function renderCobolData() {
-            const tbody = document.getElementById('cobol-tbody');
-            const filteredData = filterData(cobolData);
-            
-            if (filteredData.length === 0) {
-                document.getElementById('cobol-no-data').style.display = 'block';
-                tbody.innerHTML = '';
-                return;
-            }
-            
-            document.getElementById('cobol-no-data').style.display = 'none';
-            tbody.innerHTML = filteredData.map(item => `
-                <tr>
-                    <td><span class="record-id">${item.recordId}</span></td>
-                    <td>${item.file}</td>
-                    <td><span class="operation ${item.operation.toLowerCase()}">${item.operation}</span></td>
-                    <td class="timestamp">${formatTimestamp(item.timestamp)}</td>
-                </tr>
-            `).join('');
-        }
-
-        // Render blockchain data
-        function renderBlockchainData() {
-            const container = document.getElementById('blockchain-blocks');
-            const filteredData = filterBlockchainData(blockchainData);
-            
-            if (filteredData.length === 0) {
-                document.getElementById('blockchain-no-data').style.display = 'block';
-                container.innerHTML = '';
-                return;
-            }
-            
-            document.getElementById('blockchain-no-data').style.display = 'none';
-            container.innerHTML = filteredData.map((block, index) => `
-                <div class="blockchain-block ${index === 0 ? 'new' : ''}">
-                    <div class="block-number">Block #${block.blockNumber}</div>
-                    <div><strong>Timestamp:</strong> ${formatTimestamp(block.timestamp)}</div>
-                    <div><strong>Transactions:</strong> ${block.transactions.length}</div>
-                    ${block.transactions.map(tx => `
-                        <div class="transaction-item">
-                            <strong>Record:</strong> <span class="record-id">${tx.recordId}</span>
-                            <span class="operation ${tx.operation.toLowerCase()}">${tx.operation}</span><br>
-                            <span class="timestamp">File: ${tx.file}</span>
-                        </div>
-                    `).join('')}
-                    <div class="hash">
-                        <strong>Hash:</strong> ${block.hash}<br>
-                        <strong>Previous:</strong> ${block.previousHash}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Filter data based on input
-        function filterData(data) {
-            const filterValue = document.getElementById('filter-input').value.toLowerCase();
-            if (!filterValue) return data;
-            
-            return data.filter(item => 
-                item.recordId.toLowerCase().includes(filterValue) ||
-                item.file.toLowerCase().includes(filterValue)
-            );
-        }
-
-        function filterBlockchainData(data) {
-            const filterValue = document.getElementById('filter-input').value.toLowerCase();
-            if (!filterValue) return data;
-            
-            return data.filter(block => 
-                block.transactions.some(tx => 
-                    tx.recordId.toLowerCase().includes(filterValue) ||
-                    tx.file.toLowerCase().includes(filterValue)
-                )
-            );
-        }
-
-        // Update statistics
-        function updateStats() {
-            if (stats.totalTransactions !== undefined) {
-                document.getElementById('total-transactions').textContent = stats.totalTransactions;
-                document.getElementById('total-blocks').textContent = stats.totalBlocks;
-                document.getElementById('files-monitored').textContent = stats.filesMonitored;
-                document.getElementById('success-rate').textContent = stats.successRate + '%';
-            } else {
-                // Fallback calculation
-                document.getElementById('total-transactions').textContent = cobolData.length;
-                document.getElementById('total-blocks').textContent = blockchainData.length;
-                
-                const uniqueFiles = new Set(cobolData.map(item => item.file));
-                document.getElementById('files-monitored').textContent = uniqueFiles.size;
-                
-                const successRate = cobolData.filter(item => item.status === '00').length / cobolData.length * 100;
-                document.getElementById('success-rate').textContent = Math.round(successRate) + '%';
-            }
-        }
-
-        // Simulate a new transaction (now creates it via the adapter)
-        async function simulateTransaction() {
-            // In a real implementation, you would POST to an API endpoint
-            // For now, we'll just refresh to get latest data
-            await refreshData();
-            
-            // Show a message
-            const adapterStatus = document.getElementById('adapter-status');
-            adapterStatus.classList.add('active');
-            setTimeout(() => {
-                adapterStatus.classList.remove('active');
-                adapterStatus.classList.add('active');
-            }, 500);
-        }
-
-        // Refresh data display
-        async function refreshData() {
-            const indicator = document.getElementById('refresh-indicator');
-            indicator.classList.add('active');
-            
-            // Fetch latest data from API
-            const success = await fetchAllData();
-            
-            if (success) {
-                // Hide loading, show data
-                document.getElementById('cobol-loading').style.display = 'none';
-                document.getElementById('cobol-data').style.display = 'block';
-                document.getElementById('blockchain-loading').style.display = 'none';
-                document.getElementById('blockchain-data').style.display = 'block';
-                
-                renderCobolData();
-                renderBlockchainData();
-                updateStats();
-                
-                // Update last sync time
-                document.getElementById('sync-time').textContent = formatTimestamp(new Date());
-            } else {
-                // Show connection error
-                console.error('Failed to connect to API, using fallback data');
-                initializeFallbackData();
-                
-                // Update status to show disconnected
-                document.getElementById('blockchain-status').classList.remove('active');
-                document.getElementById('blockchain-status').classList.add('inactive');
-                document.getElementById('blockchain-status').querySelector('span').textContent = 'API Disconnected';
-                
-                // Still render with fallback data
-                document.getElementById('cobol-loading').style.display = 'none';
-                document.getElementById('cobol-data').style.display = 'block';
-                document.getElementById('blockchain-loading').style.display = 'none';
-                document.getElementById('blockchain-data').style.display = 'block';
-                
-                renderCobolData();
-                renderBlockchainData();
-                updateStats();
-            }
-            
-            setTimeout(() => {
-                indicator.classList.remove('active');
-            }, 1000);
-        }
-
-        // Clear filters
         function clearFilters() {
             document.getElementById('filter-input').value = '';
-            refreshData();
+            filteredData.transactions = [...allData.transactions];
+            filteredData.blocks = [...allData.blocks];
+            currentPage.transactions = 1;
+            currentPage.blocks = 1;
+            renderTable(currentTab);
         }
 
-        // Filter on input change
-        document.getElementById('filter-input').addEventListener('input', refreshData);
+        function simulateTransaction() {
+            const newTransaction = {
+                id: 'TX' + String(Date.now()).slice(-6),
+                operation: ['CREATE', 'UPDATE', 'DELETE'][Math.floor(Math.random() * 3)],
+                entity: ['CustomerRecord', 'AccountBalance', 'TransactionLog'][Math.floor(Math.random() * 3)],
+                file: ['CUSTOMER.DAT', 'ACCOUNTS.DAT', 'TRANS.DAT'][Math.floor(Math.random() * 3)],
+                timestamp: new Date().toISOString(),
+                status: Math.random() > 0.3 ? 'Confirmed' : 'Pending'
+            };
 
-        // Auto-refresh every 10 seconds
-        setInterval(async () => {
-            await refreshData();
-        }, 10000);
-
-        // Initialize on load
-        window.addEventListener('load', async () => {
-            // Try to connect to API
-            const success = await fetchAllData();
+            allData.transactions.unshift(newTransaction);
+            filteredData.transactions.unshift(newTransaction);
             
-            if (!success) {
-                // Use fallback data if API is not available
-                initializeFallbackData();
-                
-                // Show warning message
-                console.warn('API not available at ' + API_BASE_URL + '. Using demo data.');
-                console.warn('To connect to real data:');
-                console.warn('1. Ensure the Docker container is running');
-                console.warn('2. Update API_BASE_URL in the script');
-                console.warn('3. Ensure port 8080 is mapped in docker-compose.yml');
+            if (currentTab === 'transactions') {
+                renderTable('transactions');
             }
+            updateStatistics();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+
+        // Filter functionality
+        document.getElementById('filter-input').addEventListener('input', function(e) {
+            const filter = e.target.value.toLowerCase();
             
-            refreshData();
+            filteredData.transactions = allData.transactions.filter(item => 
+                (item.id || '').toLowerCase().includes(filter) ||
+                (item.operation || '').toLowerCase().includes(filter) ||
+                (item.entity || item.record_id || '').toLowerCase().includes(filter) ||
+                (item.file || item.source_file || '').toLowerCase().includes(filter)
+            );
             
-            // Set initial sync time
-            document.getElementById('sync-time').textContent = formatTimestamp(new Date());
+            filteredData.blocks = allData.blocks.filter(item => 
+                (item.number || item.index || '').toString().includes(filter) ||
+                (item.hash || '').toLowerCase().includes(filter)
+            );
+            
+            currentPage.transactions = 1;
+            currentPage.blocks = 1;
+            renderTable(currentTab);
         });
-    </script>
-</body>
+
+        // Add some debugging to help identify the issue
+        function debugData() {
+            console.log('=== DEBUG INFO ===');
+            console.log('All transactions data:', allData.transactions);
+            console.log('All blocks data:', allData.blocks);
+            console.log('Filtered transactions data:', filteredData.transactions);
+            console.log('Filtered blocks data:', filteredData.blocks);
+            console.log('Current tab:', currentTab);
+            console.log('==================');
+        }
+
+        // Call debug on refresh (remove this after debugging)
+        window.debugData = debugData;
+		</script>
+
+		<style>
+			.operation-badge {
+			padding: 4px 8px;
+			border-radius: 4px;
+			font-size: 0.75em;
+			font-weight: 600;
+			background: #e3f2fd;
+			color: #1976d2;
+			}
+
+			.status-badge {
+			padding: 4px 8px;
+			border-radius: 4px;
+			font-size: 0.75em;
+			font-weight: 600;
+			}
+
+			.status-badge.confirmed {
+			background: #e8f5e8;
+			color: #2e7d32;
+			}
+
+			.status-badge.pending {
+			background: #fff3e0;
+			color: #f57c00;
+			}
+		</style>
+	</body>
 </html>
