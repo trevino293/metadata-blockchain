@@ -371,14 +371,30 @@ services:
           echo "Creating MSP config.yaml"
           cat > /etc/hyperledger/fabric/msp/config.yaml <<EOF
       NodeOUs:
-        Enable: false
+        Enable: true
+        ClientOUIdentifier:
+          Certificate: cacerts/ca.org1.example.com-cert.pem
+          OrganizationalUnitIdentifier: client
+        PeerOUIdentifier:
+          Certificate: cacerts/ca.org1.example.com-cert.pem
+          OrganizationalUnitIdentifier: peer
+        AdminOUIdentifier:
+          Certificate: cacerts/ca.org1.example.com-cert.pem
+          OrganizationalUnitIdentifier: admin
+        OrdererOUIdentifier:
+          Certificate: cacerts/ca.org1.example.com-cert.pem
+          OrganizationalUnitIdentifier: orderer
       EOF
         fi
         
         # Wait for orderer to be ready
         echo "Waiting for orderer..."
-        while ! nc -z orderer.example.com 7050; do
-          echo "Orderer not ready yet..."
+        for i in {1..30}; do
+          if timeout 1 bash -c "</dev/tcp/orderer.example.com/7050" 2>/dev/null; then
+            echo "Orderer is ready!"
+            break
+          fi
+          echo "Orderer not ready yet... attempt $i/30"
           sleep 2
         done
         
@@ -462,7 +478,19 @@ services:
           echo "Creating admin MSP config.yaml"
           cat > /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/config.yaml <<EOF
       NodeOUs:
-        Enable: false
+        Enable: true
+        ClientOUIdentifier:
+          Certificate: cacerts/ca.org1.example.com-cert.pem
+          OrganizationalUnitIdentifier: client
+        PeerOUIdentifier:
+          Certificate: cacerts/ca.org1.example.com-cert.pem
+          OrganizationalUnitIdentifier: peer
+        AdminOUIdentifier:
+          Certificate: cacerts/ca.org1.example.com-cert.pem
+          OrganizationalUnitIdentifier: admin
+        OrdererOUIdentifier:
+          Certificate: cacerts/ca.org1.example.com-cert.pem
+          OrganizationalUnitIdentifier: orderer
       EOF
         fi
         
