@@ -1,0 +1,80 @@
+  OrdererOrgs:
+    - Name: Orderer
+      Domain: example.com
+      EnableNodeOUs: true
+      Specs:
+        - Hostname: orderer
+
+  PeerOrgs:
+    - Name: Org1
+      Domain: org1.example.com
+      EnableNodeOUs: true
+      Template:
+        Count: 1
+      Users:
+        Count: 1
+  EOF
+  
+  echo 'Creating configtx.yaml...'
+  cat > configtx.yaml <<EOF
+  Organizations:
+    - &OrdererOrg
+      Name: OrdererOrg
+      ID: OrdererMSP
+      MSPDir: crypto-config/ordererOrganizations/example.com/msp
+
+    - &Org1
+      Name: Org1MSP
+      ID: Org1MSP
+      MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+
+  Orderer: &OrdererDefaults
+    OrdererType: solo
+    Addresses:
+      - orderer.example.com:7050
+    BatchTimeout: 2s
+    BatchSize:
+      MaxMessageCount: 10
+      AbsoluteMaxBytes: 99 MB
+      PreferredMaxBytes: 512 KB
+
+  Application: &ApplicationDefaults
+    Organizations:
+
+  Profiles:
+    OrdererGenesis:
+      Orderer:
+        <<: *OrdererDefaults
+        Organizations:
+          - *OrdererOrg
+      Consortiums:
+        SampleConsortium:
+          Organizations:
+            - *Org1
+    ChannelConfig:
+      Consortium: SampleConsortium
+      Application:
+        <<: *ApplicationDefaults
+        Organizations:
+          - *Org1
+  EOF
+  
+  echo 'Generating crypto materials...'
+  cryptogen generate --config=./crypto-config.yaml
+  
+  echo 'Creating channel artifacts directory...'
+  mkdir -p channel-artifacts
+  
+  echo 'Generating genesis block...'
+  configtxgen -profile OrdererGenesis -outputBlock ./channel-artifacts/genesis.block -channelID system-channel
+  
+  echo 'Generating channel config...'
+  configtxgen -profile ChannelConfig -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID mychannel
+  
+  echo 'Setting permissions...'
+  chmod -R 755 crypto-config channel-artifacts
+  
+  echo '✅ Crypto materials generated successfully!'
+  
+  # Keep container running
+  tail -f /dev/null

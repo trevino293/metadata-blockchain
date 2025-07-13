@@ -3,3 +3,5 @@ pipes/
 .git/
 *.log
 node_modules/
+crypto_config/
+blockchain/crypto-config/
