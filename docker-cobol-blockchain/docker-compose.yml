@@ -371,19 +371,7 @@ services:
           echo "Creating MSP config.yaml"
           cat > /etc/hyperledger/fabric/msp/config.yaml <<EOF
       NodeOUs:
-        Enable: true
-        ClientOUIdentifier:
-          Certificate: cacerts/ca.org1.example.com-cert.pem
-          OrganizationalUnitIdentifier: client
-        PeerOUIdentifier:
-          Certificate: cacerts/ca.org1.example.com-cert.pem
-          OrganizationalUnitIdentifier: peer
-        AdminOUIdentifier:
-          Certificate: cacerts/ca.org1.example.com-cert.pem
-          OrganizationalUnitIdentifier: admin
-        OrdererOUIdentifier:
-          Certificate: cacerts/ca.org1.example.com-cert.pem
-          OrganizationalUnitIdentifier: orderer
+        Enable: false
       EOF
         fi
         
@@ -478,19 +466,7 @@ services:
           echo "Creating admin MSP config.yaml"
           cat > /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/config.yaml <<EOF
       NodeOUs:
-        Enable: true
-        ClientOUIdentifier:
-          Certificate: cacerts/ca.org1.example.com-cert.pem
-          OrganizationalUnitIdentifier: client
-        PeerOUIdentifier:
-          Certificate: cacerts/ca.org1.example.com-cert.pem
-          OrganizationalUnitIdentifier: peer
-        AdminOUIdentifier:
-          Certificate: cacerts/ca.org1.example.com-cert.pem
-          OrganizationalUnitIdentifier: admin
-        OrdererOUIdentifier:
-          Certificate: cacerts/ca.org1.example.com-cert.pem
-          OrganizationalUnitIdentifier: orderer
+        Enable: false
       EOF
         fi
         
