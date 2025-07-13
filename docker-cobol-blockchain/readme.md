@@ -4,30 +4,156 @@
 
 The Docker COBOL Blockchain Node provides a containerized environment for capturing metadata from legacy COBOL systems and integrating with blockchain networks. This component simulates a legacy mainframe environment while providing modern blockchain connectivity.
 
-## 🏗️ Architecture
+## 🏗️ Architecture - COBOL Blockchain Node 
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                Docker COBOL Blockchain Node                 │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   COBOL     │  │  Adapters   │  │   Web Interfaces    │  │
-│  │  Programs   │◄─│             │◄─│                     │  │
-│  │             │  │ Fabric      │  │ dashboard.html      │  │
-│  │ - Metadata  │  │ GCP PubSub  │  │ cobol-admin.html    │  │
-│  │ - CRUD      │  │             │  │                     │  │
-│  │ - Capture   │  │             │  │                     │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-│         │                │                      │           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │    Data     │  │    Logs     │  │       Scripts       │  │
-│  │ Files       │  │             │  │                     │  │
-│  │             │  │ adapter.log │  │ setup-fabric.ps1    │  │
-│  │ master.dat  │  │ system.log  │  │ test-system.sh      │  │
-│  │ customer.dat│  │             │  │ create-pipes.sh     │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                     Docker COBOL Blockchain System                            │
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────┐              │
+│  │                Docker COBOL Blockchain Node                 │              │
+│  │            Container: cobol-metadata-node                   │              │
+│  │                    Port: 8080                               │              │
+│  ├─────────────────────────────────────────────────────────────┤              │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │              │
+│  │  │   COBOL     │  │  Adapters   │  │   Web Interfaces    │  │              │
+│  │  │  Programs   │◄─│             │◄─│                     │  │              │
+│  │  │             │  │ • Fabric    │  │ • dashboard.html    │  │              │
+│  │  │ • Metadata  │  │ • GCP PubSub│  │ • cobol-admin.html  │  │              │
+│  │  │ • CRUD      │  │             │  │                     │  │              │
+│  │  │ • Capture   │  │             │  │                     │  │              │
+│  │  └─────────────┘  └──────┬──────┘  └─────────────────────┘  │              │
+│  │                          │                                  │             │
+│  └──────────────────────────┼──────────────────────────────────┘             │
+│                             │                                                 │
+│                             ▼ Port 7051                                       │
+│  ┌─────────────────────────────────────────────────────────────┐              │
+│  │              Hyperledger Fabric Peer Node                   │              │
+│  │           Container: peer0.org1.example.com                 │              │
+│  │                    Port: 7051                               │              │
+│  ├─────────────────────────────────────────────────────────────┤              │
+│  │  • Blockchain Ledger                                        │              │
+│  │  • Smart Contract Execution                                 │              │
+│  │  • Gossip Protocol                                          │              │
+│  │  • MSP (Membership Service Provider)                        │              │
+│  │  • State Database Connection ───────-────┐                  │              │
+│  └─────────────────────────────────────────-┼──────────────────┘              │
+│                             │               │                                 │
+│                             ▼ Port 7050     ▼ Port 5984                       │
+│  ┌─────────────────────────────────────┐  ┌─────────────────────────────────┐ │
+│  │        Fabric Orderer Node          │  │         CouchDB Database        │ │
+│  │    Container: orderer.example.com   │  │       Container: couchdb        │ │
+│  │           Port: 7050                │  │          Port: 5984             │ │
+│  ├─────────────────────────────────────┤  ├─────────────────────────────────┤ │
+│  │  • Transaction Ordering             │  │  • World State Storage          │ │
+│  │  • Block Creation                   │  │  • Rich Query Support           │ │
+│  │  • Consensus Service                │  │  • Admin UI (Fauxton)           │ │
+│  └─────────────────────────────────────┘  └─────────────────────────────────┘ │
+│                                                                               │
+│  ┌─────────────────────────────────────┐                                      │
+│  │        Fabric CLI Tools             │                                      │
+│  │         Container: cli              │                                      │
+│  ├─────────────────────────────────────┤                                      │
+│  │  • Chaincode Installation           │                                      │
+│  │  • Channel Management               │                                      │
+│  │  • Transaction Invocation           │                                      │
+│  └─────────────────────────────────────┘                                      │
+│                                                                               │
+│  Network: blockchain-net (Docker Bridge Network)                              │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## Container Communication Flow
+
+### 1. **COBOL to Blockchain Flow**
+```
+COBOL Programs → Fabric Adapter → Peer Node (7051) → Orderer (7050) → Blockchain
+     ↓                                  ↓
+  Data Files                      CouchDB (5984)
+```
+
+### 2. **Web Interface Flow**
+```
+Web Browser → Dashboard (8080) → COBOL Node → Fabric Adapter → Peer Node
+```
+
+### 3. **Transaction Flow**
+```
+1. COBOL program captures metadata
+2. Fabric adapter formats transaction
+3. Peer node validates transaction
+4. Orderer sequences transaction
+5. Peer commits to ledger
+6. CouchDB updates world state
+```
+
+## Container Details
+
+### COBOL Metadata Node (`cobol-metadata-node`)
+- **Base Image**: Ubuntu with GNU COBOL
+- **Exposed Ports**: 8080 (Web UI)
+- **Volumes**: 
+  - `./data:/app/data`
+  - `./logs:/app/logs`
+- **Function**: Legacy system simulation and metadata capture
+
+### Hyperledger Fabric Peer (`peer0.org1.example.com`)
+- **Base Image**: hyperledger/fabric-peer:2.5
+- **Exposed Ports**: 7051 (Peer), 7052 (Chaincode)
+- **Volumes**: 
+  - `peer0.org1.example.com:/var/hyperledger/production`
+  - Docker socket for chaincode containers
+- **Function**: Blockchain transaction processing and ledger maintenance
+
+### Fabric Orderer (`orderer.example.com`)
+- **Base Image**: hyperledger/fabric-orderer:2.5
+- **Exposed Ports**: 7050 (Orderer)
+- **Volumes**: 
+  - Genesis block
+  - MSP certificates
+- **Function**: Transaction ordering and block creation
+
+### CouchDB (`couchdb`)
+- **Base Image**: couchdb:3.3
+- **Exposed Ports**: 5984 (Database/UI)
+- **Environment**: 
+  - Admin user/password configured
+- **Function**: Blockchain world state storage with rich query support
+
+### Fabric CLI (`cli`)
+- **Base Image**: hyperledger/fabric-tools:2.5
+- **Volumes**: 
+  - Chaincode directory
+  - Crypto materials
+  - Channel artifacts
+- **Function**: Administrative operations and testing
+
+## Network Configuration
+
+All containers communicate over the `blockchain-net` Docker bridge network, allowing:
+- Service discovery by container name
+- Isolated network traffic
+- Port mapping to host for external access
+
+## Key Integration Points
+
+1. **Fabric Adapter**: The critical bridge between COBOL and blockchain
+2. **MSP Configuration**: Ensures proper identity and permissions
+3. **Channel Configuration**: Defines the blockchain network topology
+4. **Chaincode**: Smart contracts that process COBOL metadata
+
+## External Integrations
+
+### Google Cloud Platform
+- **Pub/Sub**: For event streaming to cloud
+- **Cloud SQL**: Optional persistent storage
+- **Compute Engine**: For distributed peer nodes
+
+### Monitoring
+- **Dashboard**: Real-time system monitoring
+- **Logs**: Comprehensive logging across all containers
+- **Metrics**: Performance and transaction statistics
+- 
 
 ## 🚀 Quick Start
 
