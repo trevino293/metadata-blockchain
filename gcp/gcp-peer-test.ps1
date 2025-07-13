@@ -9,7 +9,6 @@ param(
     [string]$Zone = "us-central1-a",
     [string]$Topic = "blockchain-metadata",
     [string]$ChannelName = "metadata-channel",
-    [switch]$Verbose,
     [switch]$ContinuousMonitoring
 )
 
@@ -169,7 +168,7 @@ if ($localChannels -and $gcpChannels) {
         }
     } catch {
         Write-Host "   ❌ Could not check blockchain heights" -ForegroundColor Red
-        if ($Verbose) { Write-Host "   Error: $_" -ForegroundColor Red }
+        Write-Verbose "   Error: $_"
         $testResults.Failed++
     }
 }
@@ -223,10 +222,8 @@ try {
     if ($adapterLogs) {
         Write-Host "   ✅ Message processed by adapter" -ForegroundColor Green
         $testResults.Passed++
-        if ($Verbose) {
-            Write-Host "   Log entries:" -ForegroundColor Gray
-            Write-Host $adapterLogs -ForegroundColor Gray
-        }
+        Write-Verbose "   Log entries:"
+        Write-Verbose $adapterLogs
     } else {
         Write-Host "   ❌ Message not found in adapter logs" -ForegroundColor Red
         $testResults.Failed++
@@ -276,10 +273,8 @@ if ($localChannels -and $gcpChannels) {
         if ($gossipLogs) {
             Write-Host "   ✅ Gossip protocol active" -ForegroundColor Green
             $testResults.Passed++
-            if ($Verbose) {
-                Write-Host "   Recent gossip activity:" -ForegroundColor Gray
-                Write-Host $gossipLogs -ForegroundColor Gray
-            }
+            Write-Verbose "   Recent gossip activity:"
+            Write-Verbose $gossipLogs
         } else {
             Write-Host "   ⚠️  No recent gossip activity detected" -ForegroundColor Yellow
             $testResults.Warnings++

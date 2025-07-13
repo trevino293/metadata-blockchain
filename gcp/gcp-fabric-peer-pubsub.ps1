@@ -472,7 +472,7 @@ $startupScript | Out-File -FilePath $startupScriptFile -Encoding UTF8
 gcloud compute instances create $VmName `
     --zone=$Zone `
     --machine-type=$VmType `
-    --image-family=ubuntu-2004-lts `
+    --image-family=ubuntu-2204-lts `
     --image-project=ubuntu-os-cloud `
     --boot-disk-size=20GB `
     --tags=fabric `
