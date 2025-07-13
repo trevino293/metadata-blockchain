@@ -1,14 +1,23 @@
-﻿# Ultra simple - using Python's built-in HTTP server, no npm needed
-FROM ubuntu:20.04
+﻿FROM ubuntu:20.04
 
+# Set non-interactive to avoid prompts during build
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install only what we need
-RUN apt-get update && apt-get install -y \
+# Update mirror to a more reliable one (optional)
+RUN sed -i 's/archive.ubuntu.com/us.archive.ubuntu.com/g' /etc/apt/sources.list
+
+# Install only what we need with retry logic
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     gnucobol \
     python3 \
     python3-pip \
     curl \
+    || (apt-get update && apt-get install -y --no-install-recommends \
+    gnucobol \
+    python3 \
+    python3-pip \
+    curl) \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages for blockchain

@@ -30,7 +30,7 @@ services:
         if [ ! -d "/crypto-config/ordererOrganizations" ]; then
           echo "Generating crypto materials..."
           
-          # Create crypto-config.yaml with NodeOUs disabled
+          # Create crypto-config.yaml WITHOUT NodeOUs
           cat > /tmp/crypto-config.yaml <<EOF
       OrdererOrgs:
         - Name: Orderer
@@ -61,6 +61,7 @@ services:
           
           # Create config.yaml for each MSP to disable NodeOUs
           find /crypto-config -name msp -type d | while read mspdir; do
+            echo "Creating config.yaml in $mspdir"
             cat > "$mspdir/config.yaml" <<EOF
       NodeOUs:
         Enable: false
@@ -211,16 +212,7 @@ services:
         
         echo "Crypto setup complete!"
         
-        # Verify what was created
-        echo "=== Verification ==="
-        echo "Genesis block:"
-        ls -la /channel-artifacts/genesis.block
-        echo "Channel TX:"
-        ls -la /channel-artifacts/mychannel.tx
-        echo "Orderer MSP:"
-        ls -la /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/keystore/
-        
-        # Keep container running for debugging if needed
+        # Keep container running for debugging
         tail -f /dev/null
       '
     volumes:
@@ -242,14 +234,8 @@ services:
     networks:
       blockchain-net:
         ipv4_address: 172.25.0.30
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5984/"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
 
-  # Orderer
+  # Orderer with fixed MSP config
   orderer:
     image: hyperledger/fabric-orderer:2.5
     container_name: orderer.example.com
@@ -262,7 +248,6 @@ services:
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
       - ORDERER_GENERAL_TLS_ENABLED=false
-      - ORDERER_FILELEDGER_LOCATION=/var/hyperledger/production/orderer
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     command: orderer
     volumes:
@@ -271,45 +256,28 @@ services:
       - orderer-data:/var/hyperledger/production/orderer
     entrypoint: |
       bash -c '
-        # Wait for crypto generation to complete
-        echo "Waiting for crypto materials and genesis block..."
-        
-        # Wait for genesis block in channel-artifacts
+        # Wait for crypto generation
+        echo "Waiting for crypto materials..."
         while [ ! -f "/channel-artifacts/genesis.block" ]; do
-          echo "Waiting for genesis block to be generated..."
+          echo "Waiting for genesis block..."
           sleep 2
         done
         
-        # Wait for MSP
         while [ ! -d "/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp" ]; do
           echo "Waiting for orderer MSP..."
           sleep 2
         done
         
-        # Create orderer directory structure
+        # Setup orderer
         mkdir -p /var/hyperledger/orderer
-        
-        # Copy genesis block to expected location
-        echo "Copying genesis block..."
         cp /channel-artifacts/genesis.block /var/hyperledger/orderer/orderer.genesis.block
-        
-        # Copy MSP to expected location
-        echo "Copying MSP..."
         cp -r /crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp /var/hyperledger/orderer/
         
-        # Ensure config.yaml exists
-        if [ ! -f "/var/hyperledger/orderer/msp/config.yaml" ]; then
-          echo "Creating MSP config.yaml"
-          cat > /var/hyperledger/orderer/msp/config.yaml <<EOF
+        # CRITICAL: Ensure config.yaml exists with NodeOUs disabled
+        cat > /var/hyperledger/orderer/msp/config.yaml <<EOF
       NodeOUs:
         Enable: false
       EOF
-        fi
-        
-        # Verify files exist
-        echo "Verifying setup..."
-        ls -la /var/hyperledger/orderer/
-        ls -la /var/hyperledger/orderer/msp/keystore/
         
         echo "Starting orderer..."
         orderer
@@ -322,7 +290,7 @@ services:
       blockchain-net:
         ipv4_address: 172.25.0.10
 
-  # Peer
+  # Peer with fixed MSP config
   peer0:
     image: hyperledger/fabric-peer:2.5
     container_name: peer0.org1.example.com
@@ -344,8 +312,6 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
       - FABRIC_LOGGING_SPEC=INFO
       - CORE_PEER_TLS_ENABLED=false
-      - CORE_CHAINCODE_LOGGING_LEVEL=INFO
-      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start
     volumes:
@@ -361,28 +327,25 @@ services:
           sleep 2
         done
         
-        # Copy MSP to expected location
-        echo "Copying MSP..."
+        # Copy MSP
+        echo "Setting up MSP..."
         mkdir -p /etc/hyperledger/fabric/
         cp -r /crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp /etc/hyperledger/fabric/
         
-        # Ensure config.yaml exists
-        if [ ! -f "/etc/hyperledger/fabric/msp/config.yaml" ]; then
-          echo "Creating MSP config.yaml"
-          cat > /etc/hyperledger/fabric/msp/config.yaml <<EOF
+        # CRITICAL: Ensure config.yaml exists with NodeOUs disabled
+        cat > /etc/hyperledger/fabric/msp/config.yaml <<EOF
       NodeOUs:
         Enable: false
       EOF
-        fi
         
-        # Wait for orderer to be ready
+        # Wait for orderer
         echo "Waiting for orderer..."
         for i in {1..30}; do
           if timeout 1 bash -c "</dev/tcp/orderer.example.com/7050" 2>/dev/null; then
             echo "Orderer is ready!"
             break
           fi
-          echo "Orderer not ready yet... attempt $i/30"
+          echo "Orderer not ready... attempt $i/30"
           sleep 2
         done
         
@@ -400,7 +363,51 @@ services:
       blockchain-net:
         ipv4_address: 172.25.0.20
 
-  # Enhanced COBOL Blockchain Node
+  # CLI with fixed MSP config
+  cli:
+    image: hyperledger/fabric-tools:2.5
+    container_name: fabric-cli
+    tty: true
+    stdin_open: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_TLS_ENABLED=false
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    entrypoint: |
+      bash -c '
+        # Wait for crypto materials
+        while [ ! -d "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" ]; do
+          echo "Waiting for admin MSP..."
+          sleep 2
+        done
+        
+        # CRITICAL: Ensure config.yaml exists with NodeOUs disabled
+        cat > /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/config.yaml <<EOF
+      NodeOUs:
+        Enable: false
+      EOF
+        
+        # Keep container running
+        /bin/bash
+      '
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+      - channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
+      - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts
+    depends_on:
+      - peer0
+    networks:
+      blockchain-net:
+        ipv4_address: 172.25.0.50
+
+  # COBOL Blockchain Node
   cobol-node:
     build:
       context: .
@@ -436,55 +443,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # CLI for Fabric operations
-  cli:
-    image: hyperledger/fabric-tools:2.5
-    container_name: fabric-cli
-    tty: true
-    stdin_open: true
-    environment:
-      - GOPATH=/opt/gopath
-      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
-      - FABRIC_LOGGING_SPEC=INFO
-      - CORE_PEER_ID=cli
-      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-      - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_ENABLED=false
-      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
-    entrypoint: |
-      bash -c '
-        # Wait for crypto materials
-        while [ ! -d "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" ]; do
-          echo "Waiting for admin MSP..."
-          sleep 2
-        done
-        
-        # Ensure config.yaml exists for admin MSP
-        if [ ! -f "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/config.yaml" ]; then
-          echo "Creating admin MSP config.yaml"
-          cat > /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/config.yaml <<EOF
-      NodeOUs:
-        Enable: false
-      EOF
-        fi
-        
-        # Keep container running
-        /bin/bash
-      '
-    volumes:
-      - /var/run/docker.sock:/host/var/run/docker.sock
-      - crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
-      - channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
-      - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts
-    depends_on:
-      - crypto-gen
-      - orderer
-      - peer0
-    networks:
-      blockchain-net:
-        ipv4_address: 172.25.0.50
 
   # Network monitoring and diagnostics
   network-monitor:

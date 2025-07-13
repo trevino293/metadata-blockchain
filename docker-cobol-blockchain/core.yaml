@@ -1,0 +1,194 @@
+# Minimal core.yaml to disable OU checking
+peer:
+  id: peer0.org1.example.com
+  networkId: dev
+  listenAddress: 0.0.0.0:7051
+  address: peer0.org1.example.com:7051
+  addressAutoDetect: false
+  
+  gossip:
+    bootstrap: peer0.org1.example.com:7051
+    useLeaderElection: true
+    orgLeader: false
+    endpoint: peer0.org1.example.com:7051
+    maxBlockCountToStore: 100
+    maxPropagationBurstLatency: 10ms
+    maxPropagationBurstSize: 10
+    propagateIterations: 1
+    propagatePeerNum: 3
+    pullInterval: 4s
+    pullPeerNum: 3
+    requestStateInfoInterval: 4s
+    publishStateInfoInterval: 4s
+    stateInfoRetentionInterval:
+    publishCertPeriod: 10s
+    skipBlockVerification: false
+    dialTimeout: 3s
+    connTimeout: 2s
+    recvBuffSize: 20
+    sendBuffSize: 200
+    digestWaitTime: 1s
+    requestWaitTime: 1500ms
+    responseWaitTime: 2s
+    aliveTimeInterval: 5s
+    aliveExpirationTimeout: 25s
+    reconnectInterval: 25s
+    
+  tls:
+    enabled: false
+    
+  BCCSP:
+    Default: SW
+    SW:
+      Hash: SHA2
+      Security: 256
+      FileKeyStore:
+        KeyStore:
+        
+  mspConfigPath: /etc/hyperledger/fabric/msp
+  localMspId: Org1MSP
+  localMspType: bccsp
+  
+  # Disable profile
+  profile:
+    enabled: false
+    listenAddress: 0.0.0.0:6060
+    
+  # Admin service
+  adminService:
+    listenAddress: 0.0.0.0:9443
+
+  # File system path
+  fileSystemPath: /var/hyperledger/production
+
+  # Handlers
+  handlers:
+    authFilters:
+      - name: DefaultAuth
+      - name: ExpirationCheck
+    decorators:
+      - name: DefaultDecorator
+    endorsers:
+      escc:
+        name: DefaultEndorsement
+        library:
+    validators:
+      vscc:
+        name: DefaultValidation
+        library:
+
+  # Validation
+  validatorPoolSize: 
+
+  # Delivery client
+  deliveryclient:
+    reconnectTotalTimeThreshold: 3600s
+    connTimeout: 3s
+    reConnectBackoffThreshold: 3600s
+    localMspType: bccsp
+
+  # Discovery
+  discovery:
+    enabled: true
+    authCacheEnabled: true
+    authCacheMaxSize: 1000
+    authCachePurgeRetentionRatio: 0.75
+    orgMembersAllowedAccess: false
+
+# VM settings
+vm:
+  endpoint: unix:///host/var/run/docker.sock
+  docker:
+    tls:
+      enabled: false
+    attachStdout: false
+    hostConfig:
+      NetworkMode: host
+      LogConfig:
+        Type: json-file
+        Config:
+          max-size: "50m"
+          max-file: "5"
+      Memory: 2147483648
+
+# Chaincode settings
+chaincode:
+  id:
+    path:
+    name:
+  builder: $(DOCKER_NS)/fabric-ccenv:latest
+  pull: false
+  golang:
+    runtime: $(DOCKER_NS)/fabric-baseos:latest
+    dynamicLink: false
+  java:
+    runtime: $(DOCKER_NS)/fabric-javaenv:latest
+  node:
+    runtime: $(DOCKER_NS)/fabric-nodeenv:latest
+  
+  installTimeout: 300s
+  startuptimeout: 300s
+  executetimeout: 30s
+  mode: net
+  keepalive: 0
+  system:
+    _lifecycle: enable
+    cscc: enable
+    lscc: enable
+    qscc: enable
+
+  logging:
+    level: info
+    shim: warning
+    format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
+# Ledger settings
+ledger:
+  blockchain:
+  state:
+    stateDatabase: CouchDB
+    couchDBConfig:
+      couchDBAddress: couchdb:5984
+      username: admin
+      password: adminpw
+      maxRetries: 3
+      maxRetriesOnStartup: 12
+      requestTimeout: 35s
+      internalQueryLimit: 1000
+      maxBatchUpdateSize: 1000
+      warmIndexesAfterNBlocks: 1
+      createGlobalChangesDB: false
+  
+  history:
+    enableHistoryDatabase: true
+
+  pvtdataStore:
+    collElgProcMaxDbBatchSize: 5000
+    collElgProcDbBatchesInterval: 1000
+
+# Operations
+operations:
+  listenAddress: 127.0.0.1:9443
+  tls:
+    enabled: false
+
+# Metrics
+metrics:
+  provider: disabled
+  statsd:
+    network: udp
+    address: 127.0.0.1:8125
+    writeInterval: 10s
+    prefix:
+
+# Logging
+logging:
+  level: INFO
+  cauthdsl: WARNING
+  gossip: WARNING
+  grpc: ERROR
+  ledger: INFO
+  msp: WARNING
+  policies: WARNING
+  peer:
+    gossip: WARNING
