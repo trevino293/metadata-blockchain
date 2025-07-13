@@ -11,6 +11,8 @@ services:
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_TLS_ENABLED=false
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_PEER_GOSSIP_BOOTSTRAP=$gcpVmIp:7051  # Add GCP peer
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=$localExternalIp:7051  # Your external IP
     command: |
       bash -c '
       mkdir -p /etc/hyperledger/fabric/msp/{admincerts,cacerts,keystore,signcerts}

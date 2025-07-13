@@ -1,5 +1,5 @@
-TRX001    Purchase Transaction CR              2025-01-21
-TRX002    Payment Transaction DB               2025-01-21
-TRX003    Refund Transaction CR                2025-01-21
-TRX004    Transfer Transaction DB              2025-01-21
-TRX005    Adjustment Transaction CR            2025-01-21
+TRX001    Payment Transaction Incremental DB Session 20250712_233230     2025-07-12
+TRX002    Refund Transaction Incremental CR Session 20250712_233230     2025-07-12
+TRX003    Transfer Transaction Incremental DB Session 20250712_233230     2025-07-12
+TRX004    Adjustment Transaction Incremental CR Session 20250712_233230     2025-07-12
+TRX005    Deposit Transaction Incremental DB Session 20250712_233230     2025-07-12
