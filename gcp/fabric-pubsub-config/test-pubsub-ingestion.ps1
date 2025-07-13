@@ -2,7 +2,7 @@
 param(
     [string]$ProjectId = "metadata-blockchain",
     [string]$Topic = "blockchain-metadata",
-    [string]$VmIp = "35.222.173.181"
+    [string]$VmIp = "34.170.20.180"
 )
 
 Write-Host "Testing Pub/Sub to Fabric Ingestion" -ForegroundColor Green

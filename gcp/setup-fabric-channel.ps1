@@ -1,116 +1,54 @@
-﻿#!/us#!/usr/bin/env pwsh
-# setup-fabric-robust.ps1
-# Robust Fabric Setup with proper error handling and fixed syntax
+﻿# Manual Fabric Setup - Step by Step
+# Run each command individually to avoid PowerShell/SSH parsing issues
 
-param(
-    [Parameter(Mandatory=$true)]
-    [string]$PeerIP,
-    
-    [Parameter(Mandatory=$true)]
-    [string]$ProjectId,
-    
-    [string]$ChannelName = "metadata-channel",
-    [string]$Zone = "us-central1-a",
-    [string]$VMName = "fabric-peer",
-    [string]$LocalPeerPort = "7051"
-)
+Write-Host "🔧 Manual Fabric Setup - Step by Step" -ForegroundColor Cyan
+Write-Host "=====================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "⚠️  IMPORTANT: Run each command manually to avoid SSH parsing issues" -ForegroundColor Yellow
+Write-Host ""
 
-Write-Host "🔧 Robust Fabric Setup with P2P Gossip" -ForegroundColor Cyan
-Write-Host "=======================================" -ForegroundColor Cyan
+$PeerIP = "34.170.20.180"
+$ProjectId = "metadata-blockchain"
+$LocalPeerIP = "184.98.199.152"
 
-# Function to run commands on the GCP VM with better error handling
-function Invoke-GCPCommand {
-    param(
-        [string]$Command,
-        [switch]$ReturnOutput,
-        [string]$Description = "Running command"
-    )
-    
-    Write-Host "   $Description..." -ForegroundColor Gray
-    
-    try {
-        if ($ReturnOutput) {
-            $result = gcloud compute ssh $VMName --project=$ProjectId --zone=$Zone --command="$Command" 2>&1
-            return $result
-        } else {
-            gcloud compute ssh $VMName --project=$ProjectId --zone=$Zone --command="$Command"
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "   ⚠️ Command completed with warnings" -ForegroundColor Yellow
-            } else {
-                Write-Host "   ✅ Command completed successfully" -ForegroundColor Green
-            }
-        }
-    } catch {
-        Write-Host "   ❌ Error: $($_.Exception.Message)" -ForegroundColor Red
-        return $null
-    }
-}
+Write-Host "📝 STEP 1: SSH into your GCP VM" -ForegroundColor Green
+Write-Host "Run this command:" -ForegroundColor Yellow
+Write-Host "gcloud compute ssh fabric-peer --project=metadata-blockchain --zone=us-central1-a" -ForegroundColor White
+Write-Host ""
+Write-Host "Then run the following commands INSIDE the VM:" -ForegroundColor Yellow
+Write-Host ""
 
-# Step 1: Network Configuration
-Write-Host "`n1. Network Configuration..." -ForegroundColor Yellow
+Write-Host "📝 STEP 2: Fix Docker Permissions" -ForegroundColor Green
+Write-Host "# Get current username and fix Docker permissions"
+Write-Host 'CURRENT_USER=$(whoami)' -ForegroundColor White
+Write-Host 'echo "Current user: $CURRENT_USER"' -ForegroundColor White
+Write-Host 'sudo usermod -aG docker $CURRENT_USER' -ForegroundColor White
+Write-Host 'sudo chmod 666 /var/run/docker.sock' -ForegroundColor White
+Write-Host 'sudo systemctl restart docker' -ForegroundColor White
+Write-Host 'newgrp docker' -ForegroundColor White
+Write-Host ""
 
-try {
-    $gcpVmIp = gcloud compute instances describe $VMName --zone=$Zone --format="value(networkInterfaces[0].accessConfigs[0].natIP)" --project=$ProjectId
-    Write-Host "   GCP VM IP: $gcpVmIp" -ForegroundColor Green
-} catch {
-    Write-Host "   ❌ Could not get GCP VM IP" -ForegroundColor Red
-    exit 1
-}
+Write-Host "📝 STEP 3: Create Directories" -ForegroundColor Green
+Write-Host 'sudo mkdir -p /opt/fabric/{crypto-config,channel-artifacts,chaincode,scripts}' -ForegroundColor White
+Write-Host 'sudo chown -R $USER:$USER /opt/fabric' -ForegroundColor White
+Write-Host 'cd /opt/fabric' -ForegroundColor White
+Write-Host ""
 
-try {
-    $localExternalIp = (Invoke-RestMethod -Uri "https://ipinfo.io/ip" -TimeoutSec 10).Trim()
-    Write-Host "   Local External IP: $localExternalIp" -ForegroundColor Green
-} catch {
-    Write-Host "   ⚠️ Could not auto-detect external IP" -ForegroundColor Yellow
-    $localExternalIp = Read-Host "   Enter your external IP address"
-}
+Write-Host "📝 STEP 4: Install Fabric Binaries" -ForegroundColor Green
+Write-Host '# Download Fabric binaries' -ForegroundColor Gray
+Write-Host 'wget https://github.com/hyperledger/fabric/releases/download/v2.5.0/hyperledger-fabric-linux-amd64-2.5.0.tar.gz' -ForegroundColor White
+Write-Host 'tar -xzf hyperledger-fabric-linux-amd64-2.5.0.tar.gz' -ForegroundColor White
+Write-Host 'sudo cp bin/* /usr/local/bin/' -ForegroundColor White
+Write-Host 'sudo chmod +x /usr/local/bin/*' -ForegroundColor White
+Write-Host '# Verify installation' -ForegroundColor Gray
+Write-Host 'cryptogen version' -ForegroundColor White
+Write-Host 'configtxgen -version' -ForegroundColor White
+Write-Host ""
 
-# Step 2: Fixed Firewall Configuration
-Write-Host "`n2. Configuring Firewall Rules..." -ForegroundColor Yellow
-
-try {
-    # Delete existing rule
-    gcloud compute firewall-rules delete allow-fabric --project=$ProjectId --quiet 2>$null
-    
-    # Create firewall rules with correct syntax - one port at a time
-    $ports = @("7051", "7052", "7050", "8080", "9443", "5984")
-    foreach ($port in $ports) {
-        gcloud compute firewall-rules create "allow-fabric-$port" `
-            --allow="tcp:$port" `
-            --source-ranges="0.0.0.0/0" `
-            --target-tags=fabric `
-            --description="Fabric port $port" `
-            --project=$ProjectId --quiet 2>$null
-    }
-    
-    Write-Host "   ✅ Firewall rules created for all ports" -ForegroundColor Green
-} catch {
-    Write-Host "   ⚠️ Firewall configuration completed with warnings" -ForegroundColor Yellow
-}
-
-# Step 3: Setup VM Prerequisites
-Write-Host "`n3. Setting up VM prerequisites..." -ForegroundColor Yellow
-
-# Create directories
-Invoke-GCPCommand -Command "sudo mkdir -p /opt/fabric/{crypto-config,channel-artifacts,chaincode,scripts} && sudo chmod -R 777 /opt/fabric" -Description "Creating directories"
-
-# Install Docker
-Invoke-GCPCommand -Command "which docker || (curl -fsSL https://get.docker.com | sudo sh)" -Description "Installing Docker"
-
-# Add user to docker group and fix permissions
-Invoke-GCPCommand -Command "sudo usermod -aG docker \$USER && sudo chmod 666 /var/run/docker.sock" -Description "Configuring Docker permissions"
-
-# Install Docker Compose
-Invoke-GCPCommand -Command "which docker-compose || (sudo curl -L 'https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64' -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose)" -Description "Installing Docker Compose"
-
-# Download Fabric binaries
-Invoke-GCPCommand -Command "cd /opt/fabric && [ -f /usr/local/bin/cryptogen ] || (wget -q https://github.com/hyperledger/fabric/releases/download/v2.5.0/hyperledger-fabric-linux-amd64-2.5.0.tar.gz && tar -xzf hyperledger-fabric-linux-amd64-2.5.0.tar.gz && sudo cp bin/* /usr/local/bin/ 2>/dev/null || true)" -Description "Downloading Fabric binaries"
-
-# Step 4: Create Configuration Files
-Write-Host "`n4. Creating configuration files..." -ForegroundColor Yellow
-
-# Create crypto-config.yaml with proper escaping
-$cryptoConfig = @'
+Write-Host "📝 STEP 5: Create Configuration Files" -ForegroundColor Green
+Write-Host '# Create crypto-config.yaml' -ForegroundColor Gray
+Write-Host @'
+cat > crypto-config.yaml << 'EOF'
 OrdererOrgs:
   - Name: Orderer
     Domain: metadata.com
@@ -124,76 +62,75 @@ PeerOrgs:
       Count: 1
     Users:
       Count: 1
-'@
+EOF
+'@ -ForegroundColor White
+Write-Host ""
 
-Invoke-GCPCommand -Command "cat > /opt/fabric/crypto-config.yaml << 'EOF'`n$cryptoConfig`nEOF" -Description "Creating crypto-config.yaml"
-
-# Create simplified configtx.yaml
-$configTx = @'
+Write-Host '# Create configtx.yaml' -ForegroundColor Gray
+Write-Host @'
+cat > configtx.yaml << 'EOF'
 Organizations:
-    - &OrdererOrg
-        Name: OrdererMSP
-        ID: OrdererMSP
-        MSPDir: crypto-config/ordererOrganizations/metadata.com/msp
+  - &OrdererOrg
+      Name: OrdererOrg
+      ID: OrdererMSP
+      MSPDir: crypto-config/ordererOrganizations/metadata.com/msp
 
-    - &Org1
-        Name: Org1MSP
-        ID: Org1MSP
-        MSPDir: crypto-config/peerOrganizations/org1.metadata.com/msp
-
-Capabilities:
-    Channel: &ChannelCapabilities
-        V2_0: true
-    Orderer: &OrdererCapabilities
-        V2_0: true
-    Application: &ApplicationCapabilities
-        V2_0: true
-
-Application: &ApplicationDefaults
-    Organizations:
-    Capabilities:
-        <<: *ApplicationCapabilities
+  - &Org1
+      Name: Org1MSP
+      ID: Org1MSP
+      MSPDir: crypto-config/peerOrganizations/org1.metadata.com/msp
+      AnchorPeers:
+        - Host: peer0.org1.metadata.com
+          Port: 7051
 
 Orderer: &OrdererDefaults
-    OrdererType: solo
-    Addresses:
-        - orderer.metadata.com:7050
-    BatchTimeout: 2s
-    BatchSize:
-        MaxMessageCount: 10
-        AbsoluteMaxBytes: 99 MB
-        PreferredMaxBytes: 512 KB
+  OrdererType: solo
+  Addresses:
+    - orderer.metadata.com:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
 
-Channel: &ChannelDefaults
-    Capabilities:
-        <<: *ChannelCapabilities
+Application: &ApplicationDefaults
+  Organizations:
 
 Profiles:
-    MetadataOrdererGenesis:
-        <<: *ChannelDefaults
-        Orderer:
-            <<: *OrdererDefaults
-            Organizations:
-                - *OrdererOrg
-        Consortiums:
-            MetadataConsortium:
-                Organizations:
-                    - *Org1
-    MetadataChannel:
-        Consortium: MetadataConsortium
-        <<: *ChannelDefaults
-        Application:
-            <<: *ApplicationDefaults
-            Organizations:
-                - *Org1
-'@
+  OrdererGenesis:
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+    Consortiums:
+      SampleConsortium:
+        Organizations:
+          - *Org1
 
-Invoke-GCPCommand -Command "cat > /opt/fabric/configtx.yaml << 'EOF'`n$configTx`nEOF" -Description "Creating configtx.yaml"
+  ChannelConfig:
+    Consortium: SampleConsortium
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Org1
+EOF
+'@ -ForegroundColor White
+Write-Host ""
 
-# Step 5: Create Docker Compose with proper variable substitution
-Write-Host "`n5. Creating Docker Compose configuration..." -ForegroundColor Yellow
+Write-Host "📝 STEP 6: Generate Crypto Materials" -ForegroundColor Green
+Write-Host 'cryptogen generate --config=./crypto-config.yaml' -ForegroundColor White
+Write-Host 'ls -la crypto-config/' -ForegroundColor White
+Write-Host ""
 
-$dockerCompose = @"
+Write-Host "📝 STEP 7: Generate Genesis Block and Channel Config" -ForegroundColor Green
+Write-Host 'mkdir -p channel-artifacts' -ForegroundColor White
+Write-Host 'configtxgen -profile OrdererGenesis -outputBlock ./channel-artifacts/genesis.block' -ForegroundColor White
+Write-Host 'configtxgen -profile ChannelConfig -outputCreateChannelTx ./channel-artifacts/metadata-channel.tx -channelID metadata-channel' -ForegroundColor White
+Write-Host ""
+
+Write-Host "📝 STEP 8: Create Docker Compose File" -ForegroundColor Green
+Write-Host @'
+cat > docker-compose.yaml << 'EOF'
 version: '2'
 
 networks:
@@ -235,8 +172,8 @@ services:
       - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
       - CORE_PEER_CHAINCODEADDRESS=peer0.org1.metadata.com:7052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.metadata.com:7051,$localExternalIp`:$LocalPeerPort
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=$gcpVmIp`:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.metadata.com:7051,184.98.199.152:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=34.170.20.180:7051
       - CORE_PEER_GOSSIP_USELEADERELECTION=true
       - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_LOCALMSPID=Org1MSP
@@ -273,7 +210,6 @@ services:
     command: /bin/bash
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
-      - ./chaincode/:/opt/gopath/src/github.com/chaincode
       - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
       - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
     depends_on:
@@ -281,103 +217,102 @@ services:
       - peer0.org1.metadata.com
     networks:
       - fabric
-
-  health-api:
-    container_name: health-api
-    image: node:16-alpine
-    working_dir: /app
-    command: sh -c "echo 'const express = require(\"express\"); const app = express(); app.get(\"/health\", (req, res) => res.json({status: \"healthy\", gossip: \"active\", peers: [\"$localExternalIp`:$LocalPeerPort\"], external_endpoint: \"$gcpVmIp`:7051\"})); app.get(\"/status\", (req, res) => res.json({status: \"operational\", blocks: 0})); app.listen(8080, () => console.log(\"Health API listening on 8080\"));' > server.js && npm init -y && npm install express && node server.js"
-    ports:
-      - 8080:8080
-    networks:
-      - fabric
-"@
-
-Invoke-GCPCommand -Command "cat > /opt/fabric/docker-compose.yaml << 'EOF'`n$dockerCompose`nEOF" -Description "Creating docker-compose.yaml"
-
-# Step 6: Generate Crypto Materials
-Write-Host "`n6. Generating crypto materials..." -ForegroundColor Yellow
-
-Invoke-GCPCommand -Command "cd /opt/fabric && export PATH=/usr/local/bin:`$PATH && cryptogen generate --config=crypto-config.yaml" -Description "Generating crypto materials"
-
-# Step 7: Create Genesis Block and Channel
-Write-Host "`n7. Creating genesis block and channel configuration..." -ForegroundColor Yellow
-
-Invoke-GCPCommand -Command "cd /opt/fabric && export PATH=/usr/local/bin:`$PATH && export FABRIC_CFG_PATH=/opt/fabric && configtxgen -profile MetadataOrdererGenesis -channelID system-channel -outputBlock ./channel-artifacts/genesis.block" -Description "Creating genesis block"
-
-Invoke-GCPCommand -Command "cd /opt/fabric && export PATH=/usr/local/bin:`$PATH && export FABRIC_CFG_PATH=/opt/fabric && configtxgen -profile MetadataChannel -outputCreateChannelTx ./channel-artifacts/$ChannelName.tx -channelID $ChannelName" -Description "Creating channel configuration"
-
-# Step 8: Start Docker Containers
-Write-Host "`n8. Starting Docker containers..." -ForegroundColor Yellow
-
-Invoke-GCPCommand -Command "cd /opt/fabric && docker-compose down 2>/dev/null || true" -Description "Stopping existing containers"
-
-Invoke-GCPCommand -Command "cd /opt/fabric && docker-compose up -d" -Description "Starting new containers"
-
-# Step 9: Wait and Verify
-Write-Host "`n9. Waiting for services to start..." -ForegroundColor Yellow
-Start-Sleep -Seconds 45
-
-# Check container status
-Write-Host "`n   Checking container status..." -ForegroundColor Gray
-$containers = Invoke-GCPCommand -Command "docker ps --format 'table {{.Names}}\t{{.Status}}'" -ReturnOutput -Description "Getting container status"
-if ($containers) {
-    Write-Host $containers -ForegroundColor Cyan
-}
-
-# Step 10: Create and Join Channel
-Write-Host "`n10. Creating and joining channel..." -ForegroundColor Yellow
-
-# Wait a bit more for CLI to be ready
-Start-Sleep -Seconds 15
-
-Invoke-GCPCommand -Command "cd /opt/fabric && docker exec cli peer channel create -o orderer.metadata.com:7050 -c $ChannelName -f ./channel-artifacts/$ChannelName.tx --outputBlock ./channel-artifacts/$ChannelName.block" -Description "Creating channel"
-
-Invoke-GCPCommand -Command "cd /opt/fabric && docker exec cli peer channel join -b ./channel-artifacts/$ChannelName.block" -Description "Joining channel"
-
-# Step 11: Test Health Endpoint
-Write-Host "`n11. Testing health endpoint..." -ForegroundColor Yellow
-Start-Sleep -Seconds 10
-
-try {
-    $health = Invoke-RestMethod -Uri "http://$gcpVmIp`:8080/health" -TimeoutSec 15
-    Write-Host "   ✅ Health endpoint responding:" -ForegroundColor Green
-    Write-Host "     Status: $($health.status)" -ForegroundColor Cyan
-    Write-Host "     Gossip: $($health.gossip)" -ForegroundColor Cyan
-    Write-Host "     External Endpoint: $($health.external_endpoint)" -ForegroundColor Cyan
-} catch {
-    Write-Host "   ⚠️ Health endpoint not ready: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-# Step 12: Final Summary and Instructions
-Write-Host "`n✅ Robust Fabric Setup Complete!" -ForegroundColor Green
-Write-Host "=================================" -ForegroundColor Green
+EOF
+'@ -ForegroundColor White
 Write-Host ""
-Write-Host "📊 Configuration Summary:" -ForegroundColor Yellow
-Write-Host "   GCP Peer IP: $gcpVmIp`:7051" -ForegroundColor White
-Write-Host "   Local Peer IP: $localExternalIp`:$LocalPeerPort" -ForegroundColor White
-Write-Host "   Channel: $ChannelName" -ForegroundColor White
+
+Write-Host "📝 STEP 9: Start Docker Containers" -ForegroundColor Green
+Write-Host '# Stop any existing containers' -ForegroundColor Gray
+Write-Host 'docker-compose down' -ForegroundColor White
+Write-Host '# Start the network' -ForegroundColor Gray
+Write-Host 'docker-compose up -d' -ForegroundColor White
+Write-Host '# Check status' -ForegroundColor Gray
+Write-Host 'docker-compose ps' -ForegroundColor White
+Write-Host 'docker logs peer0.org1.metadata.com' -ForegroundColor White
 Write-Host ""
-Write-Host "🔗 Endpoints:" -ForegroundColor Yellow
-Write-Host "   Fabric Peer: $gcpVmIp`:7051" -ForegroundColor Gray
-Write-Host "   Orderer: $gcpVmIp`:7050" -ForegroundColor Gray
-Write-Host "   Health API: http://$gcpVmIp`:8080/health" -ForegroundColor Gray
-Write-Host "   Status API: http://$gcpVmIp`:8080/status" -ForegroundColor Gray
+
+Write-Host "📝 STEP 10: Create and Join Channel" -ForegroundColor Green
+Write-Host '# Wait for containers to start' -ForegroundColor Gray
+Write-Host 'sleep 30' -ForegroundColor White
+Write-Host '# Create channel' -ForegroundColor Gray
+Write-Host 'docker exec cli peer channel create -o orderer.metadata.com:7050 -c metadata-channel -f ./channel-artifacts/metadata-channel.tx' -ForegroundColor White
+Write-Host '# Join channel' -ForegroundColor Gray
+Write-Host 'docker exec cli peer channel join -b metadata-channel.block' -ForegroundColor White
 Write-Host ""
-Write-Host "🚀 Next Steps for Local Peer Integration:" -ForegroundColor Yellow
+
+Write-Host "📝 STEP 11: Create Health API" -ForegroundColor Green
+Write-Host 'mkdir -p scripts' -ForegroundColor White
+Write-Host @'
+cat > scripts/server.js << 'EOF'
+const express = require("express");
+const app = express();
+
+app.get("/health", (req, res) => res.json({
+  status: "healthy",
+  gossip: "active",
+  peers: ["184.98.199.152:7051"],
+  external_endpoint: "34.170.20.180:7051"
+}));
+
+app.get("/status", (req, res) => res.json({
+  status: "operational",
+  blocks: 0
+}));
+
+app.listen(8080, () => console.log("Health API listening on 8080"));
+EOF
+'@ -ForegroundColor White
 Write-Host ""
-Write-Host "1. Update your local docker-compose.yml:" -ForegroundColor White
-Write-Host "   Add to your peer environment:" -ForegroundColor Gray
-Write-Host "   - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051,$gcpVmIp`:7051" -ForegroundColor Cyan
-Write-Host "   - CORE_PEER_GOSSIP_EXTERNALENDPOINT=$localExternalIp`:$LocalPeerPort" -ForegroundColor Cyan
+
+Write-Host '# Install Node.js and start health API' -ForegroundColor Gray
+Write-Host 'curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -' -ForegroundColor White
+Write-Host 'sudo apt-get install -y nodejs' -ForegroundColor White
+Write-Host 'cd scripts' -ForegroundColor White
+Write-Host 'npm init -y' -ForegroundColor White
+Write-Host 'npm install express' -ForegroundColor White
+Write-Host 'nohup node server.js > ../health-api.log 2>&1 &' -ForegroundColor White
+Write-Host 'cd ..' -ForegroundColor White
+Write-Host ""
+
+Write-Host "📝 STEP 12: Test Everything" -ForegroundColor Green
+Write-Host '# Test health endpoint' -ForegroundColor Gray
+Write-Host 'curl http://localhost:8080/health' -ForegroundColor White
+Write-Host '# Check gossip logs' -ForegroundColor Gray
+Write-Host 'docker logs peer0.org1.metadata.com | grep gossip' -ForegroundColor White
+Write-Host '# Test peer connectivity' -ForegroundColor Gray
+Write-Host 'docker exec cli peer node status' -ForegroundColor White
+Write-Host ""
+
+Write-Host "🎯 TROUBLESHOOTING TIPS:" -ForegroundColor Cyan
+Write-Host "========================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "If you get 'cryptogen: command not found':" -ForegroundColor Yellow
+Write-Host "• Check: which cryptogen" -ForegroundColor Gray
+Write-Host "• Check: echo `$PATH" -ForegroundColor Gray
+Write-Host "• Try: export PATH=`$PATH:/usr/local/bin" -ForegroundColor Gray
+Write-Host ""
+Write-Host "If Docker permission errors persist:" -ForegroundColor Yellow
+Write-Host "• Run: sudo chmod 666 /var/run/docker.sock" -ForegroundColor Gray
+Write-Host "• Run: sudo systemctl restart docker" -ForegroundColor Gray
+Write-Host "• Exit SSH and reconnect" -ForegroundColor Gray
+Write-Host ""
+Write-Host "If containers won't start:" -ForegroundColor Yellow
+Write-Host "• Run: docker-compose logs" -ForegroundColor Gray
+Write-Host "• Check: docker ps -a" -ForegroundColor Gray
+Write-Host "• Try: docker system prune -f" -ForegroundColor Gray
+Write-Host ""
+
+Write-Host "✅ AFTER SETUP COMPLETES:" -ForegroundColor Green
+Write-Host "=========================" -ForegroundColor Green
+Write-Host ""
+Write-Host "1. Update your LOCAL docker-compose.yml:" -ForegroundColor White
+Write-Host "   Add these environment variables to your local peer:" -ForegroundColor Gray
+Write-Host "   - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051,$PeerIP`:7051" -ForegroundColor Yellow
+Write-Host "   - CORE_PEER_GOSSIP_EXTERNALENDPOINT=$LocalPeerIP`:7051" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "2. Restart your local containers:" -ForegroundColor White
 Write-Host "   docker-compose down && docker-compose up -d" -ForegroundColor Gray
 Write-Host ""
-Write-Host "3. Join the channel on your local peer:" -ForegroundColor White
-Write-Host "   docker exec cli peer channel join -b ./channel-artifacts/$ChannelName.block" -ForegroundColor Gray
+Write-Host "3. Test connectivity:" -ForegroundColor White
+Write-Host "   curl http://$PeerIP`:8080/health" -ForegroundColor Gray
 Write-Host ""
-Write-Host "4. Test the connection:" -ForegroundColor White
-Write-Host "   curl http://$gcpVmIp`:8080/health" -ForegroundColor Gray
-Write-Host ""
-Write-Host "💡 Monitor gossip logs with: docker logs peer0.org1.metadata.com | grep gossip" -ForegroundColor Cyan
