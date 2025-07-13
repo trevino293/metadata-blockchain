@@ -1,0 +1,5 @@
+pipes/
+*.pipe
+.git/
+*.log
+node_modules/
